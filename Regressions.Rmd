@@ -1,0 +1,479 @@
+---
+title: "Regressions"
+output: html_document
+date: "2025-02-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r}
+library(nnet)
+```
+
+
+
+```{r}
+
+library(readxl)
+finalgood=read_xlsx("C:/Users/vreid/Downloads/finaltrygood.xlsx")
+
+finalgood$Max[finalgood$Max == -Inf] <- NA
+finalgood$Max[finalgood$Max == 0] <- NA
+finalgood$Max=as.numeric(finalgood$Max)
+finalgood$ward = as.character(finalgood$ward)
+finalgood$property_zip <- sub("-.*", "", finalgood$property_zip)
+finalgood$property_zip[finalgood$property_zip == 0] <- NA
+finalgood$property_zip = as.character(finalgood$property_zip)
+finalgood$Age=as.numeric(finalgood$Age)
+finalgood$tract_pop=as.numeric(finalgood$tract_pop)
+finalgood$tract_white_perc=as.numeric(finalgood$tract_white_perc)
+finalgood$Rooms=as.numeric(finalgood$Rooms)
+
+finalgood$Bedrooms=as.numeric(finalgood$Bedrooms)
+finalgood$`Near Major Road` = as.character(finalgood$`Near Major Road`)
+finalgood$`Prior Tax Year Market Value Estimate (Land)`=as.numeric(finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+finalgood$`Land Square Feet`=as.numeric(finalgood$`Land Square Feet`)
+```
+
+
+
+```{r}
+
+finalidk=read.csv("C:/Users/vreid/Downloads/Finaldatasetidk.csv")
+finalidk$Max[finalidk$Max == -Inf] <- NA
+finalidk$Max[finalidk$Max == 0] <- NA
+finalidk$Max=as.numeric(finalidk$Max)
+finalidk$ward = as.character(finalidk$ward)
+finalidk$property_zip <- sub("-.*", "", finalidk$property_zip)
+finalidk$property_zip[finalidk$property_zip == 0] <- NA
+finalidk$property_zip = as.character(finalidk$property_zip)
+finalidk$Age=as.numeric(finalidk$Age)
+finalidk$tract_pop=as.numeric(finalidk$tract_pop)
+finalidk$tract_white_perc=as.numeric(finalidk$tract_white_perc)
+finalidk$Rooms=as.numeric(finalidk$Rooms)
+
+finalidk$Bedrooms=as.numeric(finalidk$Bedrooms)
+finalidk$Near.Major.Road = as.character(finalidk$Near.Major.Road)
+finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.=as.numeric(finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.)
+finalidk$Land.Square.Feet=as.numeric(finalidk$Land.Square.Feet)
+
+
+
+finalidk$binary_max <- ifelse(finalidk$Max < 10, 0, 1)
+```
+
+
+```{r}
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms", "Near Major Road", "tract_white_perc", "Prior Tax Year Market Value Estimate (Land)", "Land Square Feet")
+
+all_models <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$public ~", paste(paste0("finalgood$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models)
+
+all_models_private <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$private ~", paste(paste0("finalgood$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_private[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_private)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_logit)
+
+ all_models_lin <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$Max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- lm(as.formula(formula_str))
+    all_models_lin[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_lin)
+```
+
+
+
+
+```{r}
+
+#for final idk
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models <- list()
+
+for (i in 1:length(variables)) #change 2 {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$public ~", paste(paste0("finalgood$`", subset, "`"), collapse = " * "))
+    model <- multinom(as.formula(formula_str))
+    all_models[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models)
+
+all_models_private <- list()
+
+for (i in 1:length(variables)) #change 2 if needed {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$private ~", paste(paste0("finalgood$`", subset, "`"), collapse = " * "))
+    model <- multinom(as.formula(formula_str))
+    all_models_private[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_private)
+
+all_models_logit <- list()
+
+for (i in 1:length(variables)) #change to 2 if need {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_logit)
+
+
+
+for (i in 1:length(variables)) #change 2 {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- lm(as.formula(formula_str))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_lin)
+```
+
+
+```{r}
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet")
+subset_data <- finalidk[, variables]
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(subset_data, use = "complete.obs")
+correlation_matrix
+```
+
+
+```{r}
+# Create an empty list to store models
+all_models_logit <- list()
+# Create an empty vector to store AIC values for each model
+aic_values <- c()
+
+# Loop over the number of predictors in subsets
+for (i in 1:length(variables)) {
+    subsets <- combn(variables, i, simplify = FALSE)
+    
+    # Loop over each subset of predictors
+    for (subset in subsets) {
+        # Create the formula as a string
+        formula_str <- paste("binary_max ~", paste(subset, collapse = " + "))
+        
+        # Fit the logistic regression model
+        model <- glm(as.formula(formula_str), data = finalidk, family = binomial(link = "logit"))
+        
+        # Store the model in the list
+        all_models_logit[[formula_str]] <- model
+        
+        # Extract AIC and add it to the AIC values vector
+        aic_values[formula_str] <- AIC(model)
+    }
+}
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values <- sort(aic_values)
+
+# Get the top 25 models with the lowest AICs
+top_25_models <- all_models_logit[names(sorted_aic_values[1:25])]
+
+# Print the top 25 AICs with their formulas
+top_25_models
+
+```
+
+
+
+
+PCA regression
+
+```{r}
+library(pls)
+library(caret)
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet")
+# Select only relevant columns
+data_pcr <- finalidk[, c("Max", variables)]  
+
+# Remove rows with NA values
+data_pcr <- na.omit(data_pcr)
+
+# Standardize predictors (important for PCA)
+predictors <- scale(data_pcr[, variables])
+response <- data_pcr$Max
+
+# Fit PCR model using cross-validation
+pcr_model <- pcr(response ~ predictors, data = data_pcr, scale = TRUE, validation = "CV")
+
+# Summary of PCR model
+summary(pcr_model)
+
+validationplot(pcr_model, val.type = "MSEP")  # Mean Squared Error Plot
+coef(pcr_model, ncomp = 6)  # Example: Using 2 principal components
+predictions <- predict(pcr_model, ncomp = 6, newdata = data_pcr)
+
+# Compute R-squared and RMSE
+actuals <- response
+rss <- sum((actuals - predictions)^2)
+tss <- sum((actuals - mean(actuals))^2)
+r_squared <- 1 - (rss/tss)
+rmse <- sqrt(mean((actuals - predictions)^2))
+
+cat("R-squared:", r_squared, "\nRMSE:", rmse, "\n")
+
+```
+
+
+
+```{r}
+
+
+# Create a copy of finalidk
+finalidk2 <- finalidk[, !(names(finalidk) %in% c("Total.Building.Square.Feet", "Renovation", "Multi.Family.Indicator"))]
+
+finalidk_clean <- na.omit(finalidk2)
+
+
+
+library(randomForest)
+
+# Fit Random Forest
+rf_model <- randomForest(Max ~ Rooms + Bedrooms + 
+                         tract_white_perc + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                         Near.Major.Road, 
+                         data = finalidk_clean, ntree = 100, mtry = 3, importance = TRUE)
+
+# Check Model Summary
+print(rf_model)
+
+# Variable Importance Plot
+varImpPlot(rf_model)
+
+```
+
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+# Split the data into training and test sets
+set.seed(123)  # For reproducibility
+train_indices <- sample(1:nrow(finalidk_clean), size = 0.6 * nrow(finalidk_clean))
+train_data <- predictors_scaled[train_indices, ]
+train_response <- response[train_indices]
+test_data <- predictors_scaled[-train_indices, ]
+test_response <- response[-train_indices]
+
+# Fit Decision Tree
+tree_model <- rpart(Max ~ Age + tract_pop + Rooms + Bedrooms + 
+                    tract_white_perc + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                    Land.Square.Feet + Near.Major.Road, 
+                    data = finalidk, method = "anova")
+
+# Plot the Tree
+rpart.plot(tree_model, type = 1, extra = 101)
+
+
+
+#for binary
+#confusion_matrix <- table(Actual = test_data$Max_Category, 
+                         # Predicted = test_data$Predicted_Max_Category)
+```
+
+
+
+```{r}
+# Load necessary library
+library(class)
+
+# Assuming finalidk_clean is your cleaned dataset
+# Define your predictors and response variable
+predictors <- finalidk_clean[, c("Age", "tract_pop", "Rooms", "Bedrooms", 
+                                   "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", 
+                                   "Land.Square.Feet")]
+response <- finalidk_clean$binary_max  # Adjust this to your target variable
+
+# Scale the predictors
+predictors_scaled <- scale(predictors)
+
+# Split the data into training and test sets
+set.seed(123)  # For reproducibility
+train_indices <- sample(1:nrow(finalidk_clean), size = 0.6 * nrow(finalidk_clean))
+train_data <- predictors_scaled[train_indices, ]
+train_response <- response[train_indices]
+test_data <- predictors_scaled[-train_indices, ]
+test_response <- response[-train_indices]
+
+# Choose the number of neighbors (k)
+k <- 5  # You can experiment with different values of k
+
+# Perform KNN
+predictions <- knn(train = train_data, test = test_data, cl = train_response, k = k)
+
+# If predicting a numeric variable (regression), calculate the mean of k neighbors instead
+# predictions <- rowMeans(sapply(1:k, function(i) {
+ # knn(train = train_data, test = test_data, cl = train_response, k = i)
+ #}))
+
+# Evaluate the model
+# If it's regression, calculate the mean squared error (MSE) or R-squared
+# If it's classification, you can create a confusion matrix
+
+# For regression evaluation
+mse <- mean((as.numeric(predictions) - test_response)^2)
+cat("Mean Squared Error:", mse, "\n")
+
+# For classification evaluation
+confusion_matrix <- table(test_response, predictions)
+ print(confusion_matrix)
+
+```
+
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Assuming finalidk_clean is your cleaned dataset
+
+# Select the features you want to use for clustering
+features <- finalidk_clean[, c("Age", "Rooms", "Bedrooms", 
+                                 "tract_white_perc", 
+                                 "Prior.Tax.Year.Market.Value.Estimate..Land.", 
+                                 "Land.Square.Feet")]
+
+# Scale the features
+features_scaled <- scale(features)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Determine the number of clusters (k)
+k <- 3  # You can experiment with different values of k
+
+# Run K-means clustering
+kmeans_result <- kmeans(features_scaled, centers = k, nstart = 25)
+
+# Print the clustering results
+print(kmeans_result)
+
+# Add cluster assignments to the original dataset
+finalidk_clean$Cluster <- as.factor(kmeans_result$cluster)
+
+# Visualize the clusters (using first two features for 2D visualization)
+ggplot(finalidk_clean, aes(x = Age, y = Rooms, color = Cluster)) +
+  geom_point() +
+  labs(title = "K-means Clustering", x = "Age", y = "Rooms") +
+  theme_minimal()
+
+```
+
+```{r}
+# Assuming finalidk_clean contains your dataset with cluster assignments
+
+# Example of predicting 'Max' for each cluster using linear regression
+predictions <- list()
+
+for (cluster in unique(finalidk_clean$Cluster)) {
+  # Subset data for the current cluster
+  cluster_data <- finalidk_clean[finalidk_clean$Cluster == cluster, ]
+  
+  # Fit a linear regression model (you can use other models as needed)
+  model <- lm(Max ~ Age + Rooms + Bedrooms + tract_white_perc + 
+               Prior.Tax.Year.Market.Value.Estimate..Land. + 
+               Land.Square.Feet, data = cluster_data)
+  
+  # Store the model and predictions
+  predictions[[as.character(cluster)]] <- model
+  
+  # Make predictions for the cluster data
+  cluster_data$Predicted_Max <- predict(model, newdata = cluster_data)
+  
+  # Store the updated data with predictions
+  finalidk_clean[finalidk_clean$Cluster == cluster, "Predicted_Max"] <- cluster_data$Predicted_Max
+}
+
+summary(model)
+# Check the results
+head(finalidk_clean)
+
+```
+
+
+
+
+
+```{r}
+# Elbow Method to determine optimal k
+wss <- numeric(10)  # Vector to store within-cluster sum of squares
+for (i in 1:10) {
+  kmeans_model <- kmeans(features_scaled, centers = i, nstart = 25)
+  wss[i] <- kmeans_model$tot.withinss
+}
+
+# Plot the Elbow Method
+plot(1:10, wss, type = "b", pch = 19, xlab = "Number of Clusters (k)", 
+     ylab = "Total Within-Cluster Sum of Squares", 
+     main = "Elbow Method for K-means Clustering")
+
+```
+
+
