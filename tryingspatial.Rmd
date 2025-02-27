@@ -1,0 +1,121 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+SPATIAL FOR WHEN I MERGE THINGS
+
+```{r}
+
+library(sf)
+library(spdep)
+
+library(tidyverse)
+library(spatialreg)
+
+```
+
+
+```{r}
+chicagosf <- read_csv("C:/Users/vreid/Downloads/Neighborhoods_2012b_20250222.csv")
+chicago_sf <- chicagosf %>%
+  mutate(geometry = st_as_sfc(the_geom)) %>%  # No CRS needed in st_as_sfc()
+  st_as_sf(crs = 4326)  # Assign CRS
+st_geometry(chicago_sf)  # Should return MULTIPOLYGON geometries
+st_crs(chicago_sf)  # Should return EPSG:4326
+# Ensure chicago_sf has valid geometries
+chicago_sf <- st_make_valid(chicago_sf)  
+
+# Create neighborhood adjacency
+nb <- poly2nb(chicago_sf, queen = TRUE)
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+
+```
+
+
+
+```{r}
+nb <- poly2nb(chicago_sf, queen = TRUE)  # Find neighboring polygons
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)  # Create spatial weights
+
+```
+
+
+```{r}
+
+library(readxl)
+spatialpred=read_xlsx("C:/Users/vreid/Downloads/finaltrygood.xlsx")
+```
+
+
+
+```{r}
+
+
+
+spatialpred= spatialpred %>% drop_na(longitude, latitude)
+predictors_sf <- st_as_sf(spatialpred, coords = c("longitude", "latitude"), crs = 4326)  # Ensure correct CRS
+
+merged_data <- st_join(predictors_sf, chicago_sf, join = st_within)
+merged_data$Max=as.numeric(merged_data$Max)
+
+```
+
+
+```{r}
+predictor_cols=c("Age", "Max", "Rooms")
+```
+
+
+```{r}
+# Aggregate point-based predictors within each neighborhood polygon
+merged_data <- merged_data %>%
+  group_by(PRI_NEIGH) %>%  # Group by primary neighborhood
+  summarise(
+    # Apply mean aggregation function to all specified predictors
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+    # Keep the geometry of the polygon
+    geometry = first(geometry)  # Keep the geometry of the polygon
+  ) %>%
+  st_as_sf()  # Convert to sf object
+
+```
+
+
+```{r}
+
+merged_data$Max=as.numeric(merged_data$Max)
+ols_model <- lm(merged_data$Max ~ merged_data$Age+merged_data$tract_white_perc, na.rm=T)  # Replace with actual variables
+summary(ols_model)
+
+```
+nb <- knn2nb(knearneigh(st_coordinates(merged_data), k = 5))
+
+```{r}
+nb <- poly2nb(merged_data, queen = TRUE)
+
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+moran.test(residuals(ols_model), weights)
+
+```
+
+
+```{r}
+sar_model <- lagsarlm(shape_area ~ shape_len, data = chicago_sf, listw = weights)
+summary(sar_model)
+sem_model <- errorsarlm(shape_area ~ shape_len, data = chicago_sf, listw = weights)
+summary(sem_model)
+
+```
+
+
+```{r}
+
+```
+
+
+
