@@ -1,0 +1,610 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
+
+SPATIAL FOR WHEN I MERGE THINGS
+
+```{r}
+
+library(sf)
+library(spdep)
+
+library(tidyverse)
+library(spatialreg)
+
+```
+
+```{r}
+tract_sf <- st_read("C:/Users/evett/Downloads/school_work/IPRO/Chi_nbhd.shp")
+
+chicago_sf <- st_make_valid(tract_sf)  
+
+# Create neighborhood adjacency
+nb <- poly2nb(chicago_sf, queen = TRUE)
+
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+
+```
+
+```{r}
+
+library(readxl)
+finalidk = spatialpred=read.csv("C:/Users/evett/Downloads/school_work/IPRO/assessor_rm_sli_merged.csv")
+finalidk$Private.Service.Line.Material = as.character(finalidk$Private.Service.Line.Material)
+finalidk$Public.Service.Line.Material = as.character(finalidk$Public.Service.Line.Material)
+finalidk$ward = as.character(finalidk$ward)
+finalidk$property_zip <- sub("-.*", "", finalidk$property_zip)
+finalidk$property_zip[finalidk$property_zip == 0] <- NA
+finalidk$property_zip = as.character(finalidk$property_zip)
+finalidk$Age=as.numeric(finalidk$Age)
+finalidk$tract_pop=as.numeric(finalidk$tract_pop)
+finalidk$tract_white_perc=as.numeric(finalidk$tract_white_perc)
+finalidk$tract_black_perc=as.numeric(finalidk$tract_black_perc)
+finalidk$tract_asian_perc=as.numeric(finalidk$tract_asian_perc)
+finalidk$tract_his_perc=as.numeric(finalidk$tract_his_perc)
+finalidk$tract_other_perc=as.numeric(finalidk$tract_other_perc)
+finalidk$Rooms=as.numeric(finalidk$Rooms)
+
+finalidk$Bedrooms=as.numeric(finalidk$Bedrooms)
+finalidk$ohare_noise = as.character(finalidk$ohare_noise)
+finalidk$Wall.Material = as.character(finalidk$Wall.Material)
+finalidk$Roof.Material = as.character(finalidk$Roof.Material)
+finalidk$Garage.1.Attached = ifelse(finalidk$Garage.1.Attached %in% c("false", "true"), 1, 0)
+finalidk$Porch = as.character(finalidk$Porch)
+finalidk$Use = as.character(finalidk$Use)
+finalidk$Land.Square.Feet=as.numeric(finalidk$Land.Square.Feet)
+
+```
+
+```{r}
+colnames(finalidk)
+```
+
+```{r}
+spatialpred= spatialpred %>% drop_na(longitude, latitude)
+predictors_sf <- st_as_sf(spatialpred, coords = c("longitude", "latitude"), crs = 4326)  # Ensure correct CRS
+```
+
+```{r}
+colnames(chicago_sf)
+```
+
+
+```{r}
+merged_data <- st_join(predictors_sf, chicago_sf, join = st_within)
+
+```
+
+
+```{r}
+merged_data <- merged_data %>%
+  mutate(
+    Public.Service.Line.Material = case_when(
+      Public.Service.Line.Material == "LEAD" ~ 1,
+      Public.Service.Line.Material == "SUSPECTED LEAD" ~ NA,
+      Public.Service.Line.Material == "NOT LEAD" ~ 0,
+      Public.Service.Line.Material == "GALVANIZED REQUIRING REPLACEMENT" ~ 1,
+      TRUE ~ NA_real_
+    ),
+    Private.Service.Line.Material = case_when(
+      Private.Service.Line.Material == "LEAD" ~ 1,
+      Private.Service.Line.Material == "SUSPECTED LEAD" ~ NA,
+      Private.Service.Line.Material == "NOT LEAD" ~ 0,
+      Private.Service.Line.Material == "GALVANIZED REQUIRING REPLACEMENT" ~ 1,
+      TRUE ~ NA_real_
+    )
+  )%>%
+  drop_na(Public.Service.Line.Material, Private.Service.Line.Material)
+```
+
+```{r}
+colnames(merged_data)
+```
+
+convert to logit
+
+```{r}
+# Compute smoothed probabilities (rolling mean)
+merged_data$y <- cumsum(merged_data$Public.Service.Line.Material + 0.5) / (seq_along(merged_data$Public.Service.Line.Material) + 1)
+
+merged_data$y1 <- cumsum(merged_data$Private.Service.Line.Material + 0.5) / (seq_along(merged_data$Private.Service.Line.Material) + 1)
+
+# Logit transformation
+merged_data$logitpub <- log(merged_data$y / (1 - merged_data$y))
+
+# Logit transformation
+merged_data$logitpriv <- log(merged_data$y1 / (1 - merged_data$y1))
+
+
+
+
+```
+
+```{r}
+
+
+merged_data <- merged_data %>%
+  filter(
+    !is.na(logitpriv),  # Remove NA values
+    !is.na(logitpub),
+    !is.nan(logitpriv),  # Remove NaN values
+    !is.nan(logitpub),
+    is.finite(logitpriv),  # Remove Inf and -Inf values
+    is.finite(logitpub)
+  )
+
+```
+```{r}
+colnames(merged_data)
+```
+
+
+```{r}
+merged_data <- merged_data %>%
+  st_drop_geometry() %>%  # Drop the POINT geometries
+  group_by(pri_neigh) %>%
+  summarise(
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE))
+ ) %>%
+  left_join(select(chicago_sf, pri_neigh, geometry), by = "pri_neigh") %>%  
+  # Reattach polygon geometries
+  st_as_sf()  # Convert back to sf
+
+# Ensure geometries are MULTIPOLYGON
+merged_data <- st_cast(merged_data, "MULTIPOLYGON")
+
+```
+
+```{r}
+colnames(merged_data)
+```
+
+run models
+
+```{r}
+
+Public_ols_model <- lm(logitpub ~ Age + ward + tract_white_perc, data = merged_data)  # Replace with actual variables
+summary(Public_ols_model)
+
+```
+
+```{r}
+Private_ols_model <- lm(logitpriv ~ Age + senate_dist + ward, data = merged_data)  
+# Replace with actual variables
+summary(Private_ols_model)
+
+```
+
+```{r}
+merged_data <- merged_data %>%
+  filter(!st_is_empty(geometry)) %>%  # Remove rows where geometry is missing
+  st_cast("MULTIPOLYGON")  # Ensure correct geometry type
+
+nb <- poly2nb(merged_data, queen = TRUE)
+
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+
+Public_ols_model <- lm(logitpub ~ tract_white_perc + ward + senate_dist + reps_dist + tract_black_perc, data = merged_data)  # Replace with actual variables
+
+Private_ols_model <- lm(logitpriv ~ tract_white_perc + ward + senate_dist + tract_black_perc + reps_dist, data = merged_data)  
+# Replace with actual variables
+
+#moran.test(residuals(Public_ols_model), weights)
+
+AIC(Public_ols_model)
+AIC(Private_ols_model)
+```
+
+Public
+```{r}
+set.seed(123)  # for reproducibility
+
+# Exclude both response and 'logitpriv' from predictors
+predictor_vars <- setdiff(names(merged_data), c("logitpub", "logitpriv", "geometry", "pri_neigh", "y", "y1"))
+
+all_models_lm <- list()
+aic_values <- numeric()
+
+# Generate 100 models with random combinations of 5 predictors
+for (i in 1:100) {
+  # Randomly select predictors
+  random_vars <- sample(predictor_vars, 3, replace = FALSE)
+  
+  # Build formula
+  formula_str <- paste("logitpub ~", paste(random_vars, collapse = " + "))
+  
+  # Fit the model
+  model <- lm(as.formula(formula_str), data = merged_data)
+  
+  # Store the model summary and AIC
+  all_models_lm[[formula_str]] <- summary(model)
+  aic_values[formula_str] <- AIC(model)
+}
+
+# Sort models by AIC
+sorted_aic_values <- sort(aic_values)
+
+# Get the top 5 models
+top_5_models <- all_models_lm[names(sorted_aic_values[1:5])]
+top_5_aics <- sorted_aic_values[1:5]
+
+# Optional: Print top model formulas and their AICs
+top_5_aics
+```
+
+
+Private
+```{r}
+set.seed(123)  # for reproducibility
+
+# Exclude both response and 'logitpriv' from predictors
+predictor_vars <- setdiff(names(merged_data), c("logitpub", "logitpriv", "geometry", "pri_neigh", "y", "y1"))
+
+all_models_lm <- list()
+aic_values <- numeric()
+
+# Generate 100 models with random combinations of 5 predictors
+for (i in 1:100) {
+  # Randomly select predictors
+  random_vars <- sample(predictor_vars, 5, replace = FALSE)
+  
+  # Build formula
+  formula_str <- paste("logitpriv ~", paste(random_vars, collapse = " + "))
+  
+  # Fit the model
+  model <- lm(as.formula(formula_str), data = merged_data)
+  
+  # Store the model summary and AIC
+  all_models_lm[[formula_str]] <- summary(model)
+  aic_values[formula_str] <- AIC(model)
+}
+
+# Sort models by AIC
+sorted_aic_values <- sort(aic_values)
+
+# Get the top 5 models
+top_5_models <- all_models_lm[names(sorted_aic_values[1:5])]
+top_5_aics <- sorted_aic_values[1:5]
+
+# Optional: Print top model formulas and their AICs
+top_5_aics
+```
+
+
+PUB - change predictors here
+
+```{r}
+Pub_SAR_model <- lagsarlm(logitpub ~ fs_flood_risk_direction + nbhd + tract_white_perc + ward, data = merged_data, listw = weights)
+summary(Pub_SAR_model)
+
+Pub_SEM_model <- errorsarlm(logitpub ~ fs_flood_risk_direction + nbhd + tract_white_perc + ward, data = merged_data, listw = weights)
+summary(Pub_SEM_model)
+
+Pub_SDM_model <- lagsarlm(logitpub ~ fs_flood_risk_direction + nbhd + tract_white_perc + ward, data = merged_data, listw = weights, Durbin = TRUE)
+summary(Pub_SDM_model)
+
+```
+
+
+PRI -
+
+```{r}
+Priv_SAR_model <- lagsarlm(logitpriv ~ nbhd + tract_white_perc + fs_flood_risk_direction + Land.Square.Feet , data = merged_data, listw = weights)
+summary(Priv_SAR_model)
+Priv_SEM_model <- errorsarlm(logitpriv ~ nbhd + tract_white_perc + fs_flood_risk_direction + Land.Square.Feet , data = merged_data, listw = weights)
+summary(Priv_SEM_model)
+Priv_SDM_model <- lagsarlm(logitpriv ~ nbhd + tract_white_perc + fs_flood_risk_direction + Land.Square.Feet , data = merged_data, listw = weights, Durbin = TRUE)
+summary(Priv_SDM_model)
+```
+
+```{r}
+AIC(Public_ols_model)
+```
+
+for public
+
+```{r}
+# Load the libraries
+library(spdep)
+library(sf)         
+library(tmap)       
+library(ggplot2)    
+library(RColorBrewer) 
+
+chicago_sf <- st_read("C:/Users/evett/Downloads/school_work/IPRO/Chi_nbhd.shp")
+
+# Ensure valid geometries
+chicago_sf <- st_make_valid(chicago_sf)
+
+merged_sf <- st_as_sf(merged_data, coords = c("longitude", "latitude"), crs = 4326)
+
+merged_sf <- st_transform(merged_sf, crs = st_crs(chicago_sf))
+
+nb_merged <- poly2nb(merged_sf, queen = TRUE)
+weights_merged <- nb2listw(nb_merged, style = "W", zero.policy = TRUE)
+
+
+# Add predictions to the spatial data
+#Public
+merged_data$PUB_SDM_pred <- as.numeric(predict(Pub_SDM_model, newdata = merged_sf, listw = weights_merged))
+merged_data$PUB_SAR_pred <- as.numeric(predict(Pub_SAR_model, newdata = merged_data, listw = weights))
+merged_data$PUB_SEM_pred <- as.numeric(predict(Pub_SEM_model, newdata = merged_data, listw = weights))
+
+#Private
+merged_data$PRIV_SDM_pred <- as.numeric(predict(Priv_SDM_model, newdata = merged_sf, listw = weights_merged))
+merged_data$PRIV_SAR_pred <- as.numeric(predict(Priv_SAR_model, newdata = merged_data, listw = weights))
+merged_data$PRIV_SEM_pred <- as.numeric(predict(Priv_SEM_model, newdata = merged_data, listw = weights))
+
+# Define inverse logit function
+inv_logit <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+
+# Predict logit values and transform back to probabilities
+
+merged_data$Pred_Probpubsar <- inv_logit(merged_data$PUB_SAR_pred)
+merged_data$Pred_Probpubsem <- inv_logit(merged_data$PUB_SEM_pred)
+merged_data$Pred_Probpubsdm <- inv_logit(merged_data$PUB_SDM_pred)
+
+merged_data$Pred_Probprivsar <- inv_logit(merged_data$PRIV_SAR_pred)
+merged_data$Pred_Probprivsem <- inv_logit(merged_data$PRIV_SEM_pred)
+merged_data$Pred_Probprivsdm <- inv_logit(merged_data$PRIV_SDM_pred)
+
+# Add residuals
+#merged_data$SAR_resid <- as.numeric(residuals(sar_model))
+#merged_data$SEM_resid <- as.numeric(residuals(sem_model))
+#merged_data$SDM_resid <- as.numeric(residuals(sdm_model))
+```
+
+```{r}
+library(sf)
+merged_sf <- st_as_sf(merged_data, coords = c("longitude", "latitude"), crs = 4326)
+```
+
+```{r}
+packageVersion("tmap")
+
+```
+
+```{r}
+library(shinyjs)
+tmaptools::palette_explorer()
+
+```
+```{r}
+install.packages("leaflet", "htmlwidgets")
+```
+
+public
+
+```{r}
+library(tmap)
+# Map the predictions
+tmap_mode("view")
+tm_shape(merged_sf) +
+  tm_polygons(
+    "Pred_Probpubsar",                  
+    fill.legend = tm_legend(title = "SAR Predictions"),
+    palette = "brewer.PuBuGn"
+  ) +
+  tm_layout(
+    title = "Public SAR Model Predictions",    
+    legend.outside = TRUE               
+  ) +
+  tm_borders()
+```
+
+```{r}
+# SEM Predictions Map
+tmap_mode("view")
+tm_shape(merged_sf) +
+  tm_polygons(
+    fill = "Pred_Probpubsem",                  
+    fill.legend = tm_legend(title = "SEM Predictions"),
+    palette = "brewer.YlOrRd"
+  ) +
+  tm_layout(
+    title = "Public SEM Model Predictions",    
+    legend.outside = TRUE               
+  ) +
+  tm_borders()
+```
+
+```{r}
+install.packages("spData")
+```
+
+
+```{r}
+# SDM Predictions Map
+library(spData)
+library(tmap)
+
+tmap_mode("view")
+
+tm_shape(merged_sf) +
+  tm_polygons("Pred_Probpubsdm") +
+  tm_borders() +  
+  tm_layout(legend.outside = TRUE) +  
+  tm_title("Public SDM Model Predictions")  
+```
+
+Private
+
+```{r}
+# SAR Prediction Map
+tmap_mode("view")
+tm_shape(merged_sf) +
+  tm_polygons(
+    fill = "Pred_Probprivsar",                  
+    fill.legend = tm_legend(title = "SAR Predictions"),
+    palette = "brewer.PuBuGn"
+  ) +
+  tm_layout(
+    title = "Private SAR Model Predictions",    
+    legend.outside = TRUE               
+  ) +
+  tm_borders()
+```
+
+
+```{r}
+# SEM Predictions Map
+tmap_mode("view")
+tm_shape(merged_sf) +
+  tm_polygons(
+    fill = "Pred_Probprivsem",                  
+    fill.legend = tm_legend(title = "SEM Predictions"),
+    palette = "brewer.YlOrRd"
+  ) +
+  tm_layout(
+    title = "Private SEM Model Predictions",    
+    legend.outside = TRUE               
+  ) +
+  tm_borders()
+```
+
+```{r}
+# SDM Predictions Map
+tmap_mode("view")
+tm_shape(merged_sf) +
+  tm_polygons(
+    "Pred_Probprivsdm",                  
+    palette = "brewer.PuRd"
+  ) +
+  tm_layout(
+    title = "Private SDM Model Predictions",    
+    legend.outside = TRUE               
+  ) +
+  tm_borders()
+```
+```{r}
+library(leaflet)
+library(sf)
+library(htmlwidgets)
+
+pal <- colorNumeric(palette = "PuBuGn", domain = merged_sf$Pred_Probprivsdm)
+
+# Create Leaflet Map
+m <- leaflet(data = merged_sf) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~pal(Pred_Probprivsdm),  # Color by prediction value
+    color = "black",  # Border color
+    weight = 1,       # Border thickness
+    opacity = 1,      # Border opacity
+    fillOpacity = 0.7, # Transparency of fill
+    popup = ~paste0("Prediction: ", round(Pred_Probprivsdm, 3))  # Popup info
+  ) %>%
+  addLegend(
+    pal = pal,
+    values = merged_sf$Pred_Probprivsdm,
+    title = "SDM Predictions",
+    opacity = 1
+  )
+
+# Save the map as an HTML widget
+saveWidget(m, file = "private_sdm_predictions.html")
+```
+
+```{r}
+library(leaflet)
+library(sf)
+library(htmlwidgets)
+
+pal <- colorNumeric(palette = "PuBuGn", domain = merged_sf$Pred_Probpubsdm)
+
+# Create Leaflet Map
+m <- leaflet(data = merged_sf) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~pal(Pred_Probpubsdm),  # Color by prediction value
+    color = "black",  # Border color
+    weight = 1,       # Border thickness
+    opacity = 1,      # Border opacity
+    fillOpacity = 0.7, # Transparency of fill
+    popup = ~paste0("Prediction: ", round(Pred_Probpubsdm, 3))  # Popup info
+  ) %>%
+  addLegend(
+    pal = pal,
+    values = merged_sf$Pred_Probpubsdm,
+    title = "SDM Predictions",
+    opacity = 1
+  )
+
+# Save the map as an HTML widget
+saveWidget(m, file = "public_sdm_predictions.html")
+```
+
+```{r}
+browseURL("private_sar_predictions.html")
+```
+
+
+```{r}
+library(sf)
+library(spdep)
+library(tidyverse)
+library(spatialreg)
+library(readxl)
+
+# Load neighborhood polygon data
+chicagosf <- read_csv("C:/Users/vreid/Downloads/Neighborhoods_2012b_20250222.csv")
+chicago_sf <- chicagosf %>%
+  mutate(geometry = st_as_sfc(the_geom)) %>%  # Convert to sf object
+  st_as_sf(crs = 4326)  # Assign CRS
+
+# Ensure valid geometries
+chicago_sf <- st_make_valid(chicago_sf)
+
+# Create neighborhood adjacency matrix
+nb <- poly2nb(chicago_sf, queen = TRUE)
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+
+# Load spatial predictor data
+spatialpred <- read.csv("C:/Users/vreid/Downloads/Finaldatasetlast2.csv")
+spatialpred <- spatialpred %>% drop_na(longitude, latitude)
+
+# Convert point data to sf
+predictors_sf <- st_as_sf(spatialpred, coords = c("longitude", "latitude"), crs = 4326)
+
+# Merge spatial predictors with neighborhood polygons
+merged_data <- st_join(predictors_sf, chicago_sf, join = st_within)
+merged_data$Max <- as.numeric(merged_data$Max)
+
+# Select predictor columns
+predictor_cols <- c("Age", "Max", "Rooms", "tract_white_perc")
+
+# Aggregate point-based predictors within each neighborhood polygon
+merged_data <- merged_data %>%
+  group_by(PRI_NEIGH) %>%  # Group by neighborhood
+  summarise(
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+    geometry = first(geometry)  # Preserve spatial geometry
+  ) %>%
+  st_as_sf()  # Convert back to sf object
+
+# Ensure numeric variables are properly set
+merged_data$Max <- as.numeric(merged_data$Max)
+
+# OLS Model
+ols_model <- lm(Max ~ Age + tract_white_perc, data = merged_data, na.action = na.omit)
+summary(ols_model)
+
+# Check for spatial autocorrelation in OLS residuals
+nb <- poly2nb(merged_data, queen = TRUE)
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+moran.test(residuals(ols_model), weights)
+
+# Spatial Regression Models
+sar_model <- lagsarlm(Max ~ Age + tract_white_perc, data = merged_data, listw = weights)
+summary(sar_model)
+
+sem_model <- errorsarlm(Max ~ Age + tract_white_perc, data = merged_data, listw = weights)
+summary(sem_model)
+```
