@@ -1,0 +1,1431 @@
+---
+title: "Survival"
+output: html_document
+date: "2025-04-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(tidyverse)
+library(survival)
+install.packages("survminer")
+library(survminer)
+
+
+```
+
+
+```{r}
+
+# Read your data (replace with actual path or read.csv() if needed)
+df <- read.csv("C:/Users/vreid/Downloads/for bootstrapping - Sequential (2).csv")
+df <- as.data.frame(df)  
+
+# Select columns relevant for draws
+draw_cols <- c("X1st.Draw",    "X2nd.Draw"  ,  "X3rd.Draw"  ,  "X4th.Draw" ,  
+  "X5th.Draw"  ,  "X6th.Draw"  ,  "X7th.Draw"  ,  "X8th.Draw"   , "X9th.Draw" ,   "X10th.Draw")
+
+# Make long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"),  # Select all columns that start with "X"
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+")))
+
+# Determine time to event: first draw where Lead > 15
+surv_data <- df_long %>%
+  group_by(Address) %>%
+  arrange(Draw_Num) %>%
+  summarise(
+    time = if(any(Lead > 10, na.rm = TRUE)) min(Draw_Num[Lead > 10], na.rm = TRUE) else max(Draw_Num, na.rm = TRUE),
+    event = any(Lead > 10, na.rm = TRUE)
+  )
+```
+
+
+
+```{r}
+colnames(df)
+
+```
+
+
+```{r}
+# Create survival object
+surv_obj <- Surv(time = surv_data$time, event = surv_data$event)
+
+# Fit Kaplan-Meier curve
+fit <- survfit(surv_obj ~ 1)
+
+# Plot
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Lead Level > 15 µg/L",
+           xlab = "Draw Number",
+           ylab = "Probability of Lead Level ≤ 15")
+
+```
+
+
+depends on if next also more 10
+```{r}
+# Load required libraries
+library(survival)
+library(survminer)
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+# Ensure column names are clean
+names(df) <- make.names(names(df))
+
+# Convert to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"),  # Select all time-point draw columns
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)  # Ensure ordering by address and draw number
+df_long$Lead=as.numeric(df_long$Lead)
+# Create a survival object
+df_long <- df_long %>%
+  mutate(Event = ifelse(Lead > 10, 1, 0))  # 1 if Lead > 15, else 0
+
+# Fit the survival model
+fit <- survfit(Surv(Draw_Num, Event) ~ 1, data = df_long)
+
+# Plot
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Lead Level > 10 µg/L",
+           xlab = "Draw Number",
+           ylab = "Probability of Lead Level ≤ 10")
+
+summary(fit)
+
+# Calculate the mean survival time
+mean_survival_time <- mean(fit$time)  # or fit$surv for the survival probabilities
+
+# Print the mean survival time
+print(mean_survival_time)
+
+
+summary(fit)$table
+```
+
+after 10 always 1
+```{r}
+library(survival)
+library(survminer)
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+# Clean column names
+names(df) <- make.names(names(df))
+
+# Long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)
+df_long$Lead=as.numeric(df_long$Lead)
+# Set Event to 1 at first Draw > 10, and stay 1 after
+df_long <- df_long %>%
+  group_by(Address) %>%
+  mutate(First_Exceed_Draw = min(Draw_Num[Lead > 10], na.rm = TRUE),
+         First_Exceed_Draw = ifelse(is.infinite(First_Exceed_Draw), NA, First_Exceed_Draw),  # Handle if never exceeded 10
+         Event = ifelse(!is.na(First_Exceed_Draw) & Draw_Num >= First_Exceed_Draw, 1, 0)) %>%
+  ungroup()
+
+# Fit survival model
+fit <- survfit(Surv(Draw_Num, Event) ~ 1, data = df_long)
+
+# Plot survival curve
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Reaching Lead Level > 10ppb (and Beyond)",
+           xlab = "Draw Number",
+           ylab = "Probability of Not Yet 10ppb")
+
+# Mean survival time (time to exceed 10)
+mean_survival_time <- mean(fit$time)
+print(mean_survival_time)
+summary(fit)
+
+
+summary(fit)$table
+
+
+```
+
+change mutate for this for max--rn 90th stops if goes below 90th
+mutate(Max_Lead = max(Lead, na.rm = TRUE),
+         Event = ifelse(Lead == Max_Lead, 1, 0)) %>%
+  ungroup()
+
+```{r}
+# Load required libraries
+library(survival)
+library(survminer)
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+# Ensure column names are clean
+names(df) <- make.names(names(df))
+
+# Convert to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"),  # Select all time-point draw columns
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)
+df_long$Lead=as.numeric(df_long$Lead)
+# Create Event = 1 if this draw's Lead is the maximum for that Address
+df_long <- df_long %>%
+  group_by(Address, Date.Sampled) %>%
+  mutate(
+    P90_Lead = quantile(Lead, 0.9, na.rm = TRUE),
+    Event = ifelse(Lead >= P90_Lead, 1, 0)
+  ) %>%
+  ungroup()
+
+# Fit the survival model
+fit <- survfit(Surv(Draw_Num, Event) ~ 1, data = df_long)
+
+# Plot the survival curve
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Max Lead Level per Address",
+           xlab = "Draw Number",
+           ylab = "Probability of Not Yet Reaching Max Lead Level")
+
+# Summary
+summary(fit)
+
+# Calculate the mean survival time
+mean_survival_time <- mean(fit$time)
+print(mean_survival_time)
+
+summary(fit)$table
+
+```
+90th keep going once it is hit
+```{r}
+
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(survival)
+library(survminer)
+
+# Clean column names
+names(df) <- make.names(names(df))
+
+# Convert to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)
+df_long$Lead=as.numeric(df_long$Lead)
+# Identify first Draw_Num where max Lead is reached, and set Event = 1 at that point and after
+df_long <- df_long %>%
+  group_by(Address, Date.Sampled) %>%
+  mutate(Max_Lead  = quantile(Lead, 0.9, na.rm = TRUE),
+    Event = ifelse(Lead >= Max_Lead, 1, 0),
+         Event = ifelse(Draw_Num >= Event, 1, 0)) %>%
+  ungroup()
+
+# Fit survival model
+fit <- survfit(Surv(Draw_Num, Event) ~ 1, data = df_long)
+
+# Plot survival curve
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Reaching Max Lead Level (and Beyond)",
+           xlab = "Draw Number",
+           ylab = "Probability of Not Yet Reaching Max Lead")
+
+# Print mean survival time
+mean_survival_time <- mean(fit$time)
+print(mean_survival_time)
+summary(fit)$table
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(survival)
+library(survminer)
+
+# Clean column names
+names(df) <- make.names(names(df))
+
+# Convert to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)
+df_long$Lead=as.numeric(df_long$Lead)
+# Identify first Draw_Num where max Lead is reached, and set Event = 1 at that point and after
+df_long <- df_long %>%
+  group_by(Address, Date.Sampled) %>%
+  mutate(Max_Lead = max(Lead, na.rm = TRUE),
+         Max_Draw = min(Draw_Num[Lead == Max_Lead], na.rm = TRUE),
+         Event = ifelse(Draw_Num >= Max_Draw, 1, 0)) %>%
+  ungroup()
+
+# Fit survival model
+fit <- survfit(Surv(Draw_Num, Event) ~ 1, data = df_long)
+
+# Plot survival curve
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Reaching Max Lead Level (and Beyond)",
+           xlab = "Draw Number",
+           ylab = "Probability of Not Yet Reaching Max Lead")
+
+# Print mean survival time
+mean_survival_time <- mean(fit$time)
+print(mean_survival_time)
+summary(fit)
+
+summary(fit)$table
+```
+
+
+```{r}
+# Load libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+# Convert to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"), names_to = "Draw", values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)
+
+# Plot average lead level over draws
+ggplot(df_long, aes(x = Draw_Num, y = Lead, group = Address, color = Address)) +
+  geom_line(alpha = 0.3) +  # Light lines per location
+  geom_smooth(aes(group = 1), method = "loess", se = FALSE, color = "black", linewidth = 1.5) +  # Smoothed trend
+  labs(title = "Lead Level Over Draw Numbers",
+       x = "Draw Number",
+       y = "Lead Level (µg/L)") +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+
+# Reshape to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"), names_to = "Draw", values_to = "Lead") %>%
+  filter(str_detect(Draw, "Draw")) %>%  # Keep only draw columns
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  filter(!is.na(Lead))
+
+# Calculate average lead per draw
+avg_lead_by_draw <- df_long %>%
+  group_by(Draw_Num) %>%
+  summarise(mean_lead = mean(Lead, na.rm = TRUE),
+            sd_lead = sd(Lead, na.rm = TRUE),
+            n = n(),
+            se = sd_lead / sqrt(n))
+
+# Plot
+ggplot(avg_lead_by_draw, aes(x = Draw_Num, y = mean_lead)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_errorbar(aes(ymin = mean_lead - se, ymax = mean_lead + se), width = 0.2, color = "gray40") +
+  labs(title = "Average Lead Level Over Sequential Draws",
+       x = "Draw Number",
+       y = "Average Lead Level (µg/L)") +
+  theme_minimal()
+
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"), names_to = "Draw", values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(gsub("[^0-9]", "", Draw)))  # This removes everything except the numbers
+
+# Check if the numbers are now correctly extracted
+print(unique(df_long$Draw))  # To inspect the draw names
+print(unique(df_long$Draw_Num))  # To check the extracted numeric draw numbers
+
+
+
+# Summarize data
+avg_lead_by_draw <- df_long %>%
+  group_by(Draw_Num) %>%
+  summarise(mean_lead = mean(Lead, na.rm = TRUE),
+            sd_lead = sd(Lead, na.rm = TRUE),
+            n = n(),
+            se = sd_lead / sqrt(n))
+
+# Check if there are still NA values
+print(avg_lead_by_draw)
+
+# Plot
+ggplot(avg_lead_by_draw, aes(x = Draw_Num, y = mean_lead)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_errorbar(aes(ymin = mean_lead - se, ymax = mean_lead + se), width = 0.2, color = "gray40") +
+  labs(title = "Average Lead Level Over Sequential Draws",
+       x = "Draw Number",
+       y = "Average Lead Level (µg/L)") +
+  theme_minimal()
+
+```
+
+make something like this for finalidk?
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+
+# Convert the data to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"), 
+               names_to = "Draw", 
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+")))  # Extract draw number
+
+# Check the first few rows to ensure everything is working
+head(df_long)
+
+df_long$Lead=as.numeric(df_long$Lead)
+# Summarize data by draw number
+avg_lead_by_draw <- df_long %>%
+  group_by(Draw_Num) %>%
+  summarise(mean_lead = mean(Lead, na.rm = TRUE),  # Remove NAs during calculation
+            sd_lead = sd(Lead, na.rm = TRUE),
+            n = n(),
+            se = sd_lead / sqrt(n),  # Standard error
+            .groups = "drop")  # Drop grouping after summarizing
+
+# Check the summarized data
+print(avg_lead_by_draw)
+
+# Plot the average lead level over sequential draws
+ggplot(avg_lead_by_draw, aes(x = Draw_Num, y = mean_lead)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_errorbar(aes(ymin = mean_lead - se, ymax = mean_lead + se), width = 0.2, color = "gray40") +
+  labs(title = "Average Lead Level Over Sequential Draws",
+       x = "Draw Number",
+       y = "Average Lead Level") +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+# Convert all columns starting with "X" to numeric
+df <- df %>%
+  mutate(across(starts_with("X"), ~ as.numeric(.), .names = "{.col}"))
+
+```
+
+```{r}
+# Find the max value for each row across selected columns
+df <- df %>%
+  rowwise() %>%  # Process each row individually
+  mutate(MaxValue = max(c_across(starts_with("X")), na.rm = TRUE)) %>%  # Get max of selected columns (start with "X")
+  ungroup()  # Remove rowwise grouping
+
+# Check the result
+head(df)
+
+```
+
+```{r}
+# Create an empty vector to store the MaxSource column for each row
+max_source <- vector("character", length = nrow(df))
+
+# Iterate over each row to find the column with the MaxValue
+for (i in 1:nrow(df)) {
+  # Get the names of columns that start with "X"
+  x_columns <- grep("^X", names(df), value = TRUE)
+  
+  # Get the row's values for columns starting with "X"
+  row_values <- df[i, x_columns, drop = FALSE]
+  
+  # Find the column with the maximum value (that matches MaxValue)
+  max_column <- which(row_values == df$MaxValue[i])
+  
+  # Store the column name corresponding to the max value
+  if (length(max_column) > 0) {  # Ensure there is a match
+    max_source[i] <- names(row_values)[max_column]
+  } else {
+    max_source[i] <- NA  # In case there's no match (this shouldn't happen)
+  }
+}
+
+# Add the MaxSource column to the dataframe
+df$MaxSource <- max_source
+
+# Check the result
+head(df)
+
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+
+# Convert the data to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"), 
+               names_to = "Draw", 
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+")))  # Extract draw number
+
+# Check the first few rows to ensure everything is working
+head(df_long)
+
+# Convert Lead to numeric
+df_long$Lead = as.numeric(df_long$Lead)
+
+
+
+# Summarize data by MaxSource and Draw_Num
+avg_lead_by_maxsource <- df_long %>%
+  group_by(MaxSource, Draw_Num) %>%
+  summarise(mean_lead = mean(Lead, na.rm = TRUE),  # Remove NAs during calculation
+            sd_lead = sd(Lead, na.rm = TRUE),
+            n = n(),
+            se = sd_lead / sqrt(n),  # Standard error
+            .groups = "drop")  # Drop grouping after summarizing
+
+# Check the summarized data
+print(avg_lead_by_maxsource)
+
+# Plot the average lead level over sequential draws, grouped by MaxSource
+ggplot(avg_lead_by_maxsource, aes(x = Draw_Num, y = mean_lead, color = MaxSource)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean_lead - se, ymax = mean_lead + se), width = 0.2) +
+  labs(title = "Average Lead Level Over Sequential Draws by MaxSource",
+       x = "Draw Number",
+       y = "Average Lead Level",
+       color = "MaxSource") +
+  theme_minimal() 
+
+```
+
+
+```{r}
+df <- df %>%
+   
+  rowwise() %>%
+  mutate(
+    MaxSource = if (all(is.na(as.numeric(c_across(starts_with("X")))))) {
+      NA_character_
+    } else {
+      # Convert the values to numeric and find the max
+      max_vals <- as.numeric(c_across(starts_with("X")))
+      max_col <- which.max(max_vals)  # Index of the column with the highest value
+      
+      # Return the full column name (e.g., "X1", "X2", or "X3")
+      names(.)[max_col]
+    }
+  ) %>%
+  ungroup()
+
+```
+
+```{r}
+df <- df %>%
+  select(-"X3.Minute", -"X5.Minute", -"X7.Minute", -"X10.Minute", -"X15.Minute", -"X20.Minute") %>%  # Drop specific columns ending with .Minute
+  rowwise() %>%
+  mutate(
+    MaxSource = if (all(is.na(as.numeric(c_across(starts_with("X")))))) {
+      NA_character_
+    } else {
+      # Convert the values to numeric and find the max
+      max_vals <- as.numeric(c_across(starts_with("X")))
+      max_col <- which.max(max_vals)  # Index of the column with the highest value
+      
+      # Return the full column name (e.g., "X1", "X2", or "X3")
+      names(.)[max_col]
+    }
+  ) %>% 
+  ungroup()
+
+```
+
+```{r}
+# Remove specific columns by name
+df <- df %>%
+  select(-starts_with("X") & ends_with(".Minute"))  # Removes columns with names starting with "X" and ending with ".Minute"
+
+```
+
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+
+df <- df %>%
+  select(-ends_with(".Minute"))  # This removes any columns ending with .Minute
+
+
+# Step 1: Create MaxSource column (where max lead came from per address)
+df <- df %>%
+  rowwise() %>%
+  mutate(
+    MaxSource = if (all(is.na(as.numeric(c_across(starts_with("X")))))) {
+      NA_character_
+    } else {
+      # Convert the values to numeric and find the max
+      max_vals <- as.numeric(c_across(starts_with("X")))
+      max_col <- which.max(max_vals)  # Index of the column with the highest value
+      
+      # Return the full column name (e.g., "X1", "X2", or "X3")
+      names(.)[max_col]
+    }
+  ) %>%
+  ungroup()
+
+
+
+# Step 2: Convert to long format
+df_long <- df %>%
+  pivot_longer(cols = starts_with("X"), 
+               names_to = "Draw", 
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+")),
+         Lead = as.numeric(Lead))
+
+# Step 3: Join MaxSource to long data
+df_long <- df_long %>%
+  left_join(df %>% select(MaxSource), by = row_number())
+
+# Step 4: Summarize lead levels by draw and MaxSource
+avg_lead_by_draw <- df_long %>%
+  group_by(MaxSource, Draw_Num) %>%
+  summarise(mean_lead = mean(Lead, na.rm = TRUE),
+            sd_lead = sd(Lead, na.rm = TRUE),
+            n = n(),
+            se = sd_lead / sqrt(n),
+            .groups = "drop")
+
+# Step 5: Plot grouped by MaxSource
+ggplot(avg_lead_by_draw, aes(x = Draw_Num, y = mean_lead)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_errorbar(aes(ymin = mean_lead - se, ymax = mean_lead + se), width = 0.2, color = "gray40") +
+  facet_wrap(~ MaxSource) +
+  labs(
+    title = "Average Lead Level by Draw, Grouped by MaxSource",
+    x = "Draw Number",
+    y = "Average Lead Level (µg/L)"
+  ) +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+ df2=read.csv("C:/Users/vreid/Downloads/boots - Copy.csv")
+
+library(lubridate)
+library(dplyr)
+df2 <- df2 %>%
+  mutate(Date = mdy(Sample.Date),  
+         season = case_when(
+           month(Date) %in% c(12, 1, 2) ~ "Winter",
+           month(Date) %in% c(3, 4, 5)  ~ "Spring",
+           month(Date) %in% c(6, 7, 8)  ~ "Summer",
+           month(Date) %in% c(9, 10, 11) ~ "Fall"
+         )) %>%
+  mutate(Year = year(Date),  # Extract year
+         Month = month(Date))  # Extract month
+df2$ward=as.character(df2$ward)
+df2$Max=as.numeric(df2$Max)
+df_percentiles <- df2 %>%
+  group_by(Year, Month) %>%
+  summarise(Percentile_90 = quantile(Max, 0.9, na.rm = TRUE)) 
+```
+
+```{r}
+install.packages("tseries")
+
+# Load the package
+library(tseries)
+```
+
+
+
+```{r}
+
+# Load required packages
+library(dplyr)
+library(lubridate)
+library(forecast)
+
+# Assuming df2 is already cleaned and you have a 'Max' variable
+
+
+
+# Create a Date column for time series object (you can use Year and Month to construct it)
+df2_monthly <- df_percentiles %>%
+  mutate(Date = make_date(Year, Month, 1))
+df2_monthly = drop_na(df2_monthly)
+
+# Step 2: Create time series object
+ts_data <- ts(df2_monthly$Percentile_90, start = c(min(df2_monthly$Year), min(df2_monthly$Month)), frequency = 12)
+
+# Step 3: Check for stationarity (optional but recommended)
+# Augmented Dickey-Fuller test (ADF) to check for stationarity
+adf_test <- adf.test(ts_data)
+
+# If p-value is high, the series is non-stationary and may require differencing
+# For example, if stationarity is not found, apply differencing
+
+# Step 4: Fit the SIRMA model (Seasonal ARIMA)
+fit_sirma <- auto.arima(ts_data, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+
+# Step 5: Check the model summary
+summary(fit_sirma)
+
+# Step 6: Forecast the future
+forecast_horizon <- 12  # Number of months to forecast (adjust as needed)
+forecast_values <- forecast(fit_sirma, h = forecast_horizon)
+
+# Plot the forecast
+autoplot(forecast_values) + 
+  ggtitle("SIRMA Model Forecast") + 
+  xlab("Year") + ylab("Monthly Max Lead Level")
+
+# Optionally, you can check the residuals of the model to ensure it fits well
+checkresiduals(fit_sirma)
+
+```
+
+```{r}
+adf_test <- adf.test(ts_data)
+adf_test
+```
+
+
+```{r}
+# Load required packages
+library(dplyr)
+library(lubridate)
+library(forecast)
+library(ggplot2)
+
+# Assuming df2 is already cleaned and you have a 'Max' variable
+
+
+
+# Step 3: Check for stationarity (optional but recommended)
+# Augmented Dickey-Fuller test (ADF) to check for stationarity
+adf_test <- adf.test(ts_data)
+
+# If p-value is high, the series is non-stationary and may require differencing
+if (adf_test$p.value > 0.05) {
+  ts_data_diff <- diff(ts_data)  # Apply differencing to make the series stationary
+  # Now the series is stationary, check the ADF test again after differencing
+  adf_test_diff <- adf.test(ts_data_diff)
+  print(adf_test_diff)  # To check the ADF test after differencing
+} else {
+  ts_data_diff <- ts_data
+}
+
+# Step 4: Fit the SIRMA model (Seasonal ARIMA)
+fit_sirma <- auto.arima(ts_data_diff, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+
+# Step 5: Check the model summary
+summary(fit_sirma)
+
+# Step 6: Forecast the future
+forecast_horizon <- 12  # Number of months to forecast (adjust as needed)
+forecast_values <- forecast(fit_sirma, h = forecast_horizon)
+
+# Plot the forecast with points displayed
+autoplot(forecast_values) + 
+  geom_point(aes(x = time(ts_data), y = ts_data), color = "blue", size = 2) +  # Add points for actual data
+  ggtitle("SIRMA Model Forecast") + 
+  xlab("Year") + ylab("Monthly Max Lead Level")
+
+# Optionally, you can check the residuals of the model to ensure it fits well
+checkresiduals(fit_sirma)
+
+```
+
+
+```{r}
+
+# Prepare the data for plotting
+forecast_df <- data.frame(
+  Date = seq(as.Date(paste(max(df2_monthly$Year), max(df2_monthly$Month), 1, sep = "-")), 
+             by = "month", length.out = forecast_horizon),
+  Forecast = forecast_values$mean,
+  Lower = forecast_values$lower[, 2],
+  Upper = forecast_values$upper[, 2]
+)
+
+# Create a plot using ggplot
+ggplot() +
+  # Actual data points
+  geom_point(data = df2_monthly, aes(x = Date, y = Percentile_90), color = "blue", size = 2) +
+  # Forecasted data points
+  geom_line(data = forecast_df, aes(x = Date, y = Forecast), color = "red", size = 1) +
+  geom_ribbon(data = forecast_df, aes(x = Date, ymin = Lower, ymax = Upper), fill = "gray", alpha = 0.3) +
+  ggtitle("SIRMA Model Forecast") + 
+  xlab("Date") + ylab("90th Percentile of Max Lead Level") +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+# Prepare the data for plotting
+forecast_df <- data.frame(
+  Date = seq(as.Date(paste(max(df2_monthly$Year), max(df2_monthly$Month), 1, sep = "-")), 
+             by = "month", length.out = forecast_horizon),
+  Forecast = forecast_values$mean,
+  Lower = forecast_values$lower[, 2],
+  Upper = forecast_values$upper[, 2]
+)
+
+# Create a plot using ggplot
+ggplot() +
+  # Actual data points and line
+  geom_point(data = df2_monthly, aes(x = Date, y = Percentile_90), color = "blue", size = 2) +
+  geom_line(data = df2_monthly, aes(x = Date, y = Percentile_90), color = "blue", size = 1) +  # Line for actual data
+  # Forecasted data points and line
+  geom_line(data = forecast_df, aes(x = Date, y = Forecast), color = "red", size = 1) +  # Line for forecasted data
+  geom_ribbon(data = forecast_df, aes(x = Date, ymin = Lower, ymax = Upper), fill = "gray", alpha = 0.3) +  # Confidence interval
+  ggtitle("SIRMA Model Forecast") + 
+  xlab("Date") + ylab("90th Percentile of Max Lead Level") +
+  theme_minimal()
+```
+
+
+```{r}
+# Load required packages
+library(dplyr)
+library(lubridate)
+library(forecast)
+library(ggplot2)
+
+# Assuming df2 is already cleaned and you have a 'Max' variable
+
+# Create a Date column for time series object (you can use Year and Month to construct it)
+df2_monthly <- df2 %>%
+  mutate(Date = make_date(Year, Month, 1)) %>%
+  drop_na()  # Remove rows with missing values
+
+
+
+# Step 3: Check for stationarity (optional but recommended)
+# Augmented Dickey-Fuller test (ADF) to check for stationarity
+adf_test <- adf.test(ts_data)
+
+# If p-value is high, the series is non-stationary and may require differencing
+if (adf_test$p.value > 0.05) {
+  ts_data_diff <- diff(ts_data)  # Apply differencing to make the series stationary
+  # Now the series is stationary, check the ADF test again after differencing
+  adf_test_diff <- adf.test(ts_data_diff)
+  print(adf_test_diff)  # To check the ADF test after differencing
+} else {
+  ts_data_diff <- ts_data
+}
+
+# Step 4: Fit the SIRMA model (Seasonal ARIMA)
+fit_sirma <- auto.arima(ts_data_diff, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+
+# Step 5: Check the model summary
+summary(fit_sirma)
+
+# Step 6: Forecast the future
+forecast_horizon <- 12  # Number of months to forecast (adjust as needed)
+forecast_values <- forecast(fit_sirma, h = forecast_horizon)
+
+# Prepare the data for plotting
+forecast_df <- data.frame(
+  Date = seq(as.Date(paste(max(df2_monthly$Year), max(df2_monthly$Month), 1, sep = "-")), 
+             by = "month", length.out = forecast_horizon),
+  Forecast = forecast_values$mean,
+  Lower = forecast_values$lower[, 2],
+  Upper = forecast_values$upper[, 2]
+)
+
+# Remove the first 3 months from both actual and forecast data
+df2_monthly_filtered <- df2_monthly %>%
+  filter(Date >= min(df2_monthly$Date) + months(3))
+
+forecast_df_filtered <- forecast_df %>%
+  filter(Date >= min(df2_monthly$Date) + months(3))
+
+# Create a plot using ggplot
+ggplot() +
+  # Actual data points and line
+  geom_point(data = df2_monthly_filtered, aes(x = Date, y = Percentile_90), color = "blue", size = 2) +
+  geom_line(data = df2_monthly_filtered, aes(x = Date, y = Percentile_90), color = "blue", size = 1) +  # Line for actual data
+  # Forecasted data points and line
+  geom_line(data = forecast_df_filtered, aes(x = Date, y = Forecast), color = "red", size = 1) +  # Line for forecasted data
+  geom_ribbon(data = forecast_df_filtered, aes(x = Date, ymin = Lower, ymax = Upper), fill = "gray", alpha = 0.3) +  # Confidence interval
+  ggtitle("SIRMA Model Forecast") + 
+  xlab("Date") + ylab("90th Percentile of Max Lead Level") +
+  theme_minimal()
+
+# Optionally, you can check the residuals of the model to ensure it fits well
+checkresiduals(fit_sirma)
+
+```
+
+
+```{r}
+# Load required packages
+library(dplyr)
+library(lubridate)
+library(forecast)
+library(ggplot2)
+
+# Assuming df2 is already cleaned and you have a 'Max' variable
+
+# Create a Date column for time series object (you can use Year and Month to construct it)
+df2_monthly <- df_percentiles %>%
+  mutate(Date = make_date(Year, Month, 1))
+df2_monthly = drop_na(df2_monthly)
+
+
+# Remove the first 3 months from the data before the model
+df2_monthly_filtered <- df2_monthly %>%
+  filter(Date >= min(df2_monthly$Date) + months(3))
+
+# Step 2: Create time series object
+ts_data <- ts(df2_monthly_filtered$Percentile_90, start = c(min(df2_monthly_filtered$Year), min(df2_monthly_filtered$Month)), frequency = 12)
+
+
+
+# Step 3: Check for stationarity (optional but recommended)
+# Augmented Dickey-Fuller test (ADF) to check for stationarity
+adf_test <- adf.test(ts_data)
+
+# If p-value is high, the series is non-stationary and may require differencing
+if (adf_test$p.value > 0.05) {
+  ts_data_diff <- diff(ts_data)  # Apply differencing to make the series stationary
+  # Now the series is stationary, check the ADF test again after differencing
+  adf_test_diff <- adf.test(ts_data_diff)
+  print(adf_test_diff)  # To check the ADF test after differencing
+} else {
+  ts_data_diff <- ts_data
+}
+
+# Step 4: Fit the SIRMA model (Seasonal ARIMA)
+fit_sirma <- auto.arima(ts_data_diff, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+
+# Step 5: Check the model summary
+summary(fit_sirma)
+
+# Step 6: Forecast the future
+forecast_horizon <- 12  # Number of months to forecast (adjust as needed)
+forecast_values <- forecast(fit_sirma, h = forecast_horizon)
+
+# Prepare the data for plotting
+forecast_df <- data.frame(
+  Date = seq(as.Date(paste(max(df2_monthly_filtered$Year), max(df2_monthly_filtered$Month), 1, sep = "-")), 
+             by = "month", length.out = forecast_horizon),
+  Forecast = forecast_values$mean,
+  Lower = forecast_values$lower[, 2],
+  Upper = forecast_values$upper[, 2]
+)
+
+# Create a plot using ggplot
+ggplot() +
+  # Actual data points and line
+  geom_point(data = df2_monthly_filtered, aes(x = Date, y = Percentile_90), color = "blue", size = 2) +
+  geom_line(data = df2_monthly_filtered, aes(x = Date, y = Percentile_90), color = "blue", size = 1) +  # Line for actual data
+  # Forecasted data points and line
+  geom_line(data = forecast_df, aes(x = Date, y = Forecast), color = "red", size = 1) +  # Line for forecasted data
+  geom_ribbon(data = forecast_df, aes(x = Date, ymin = Lower, ymax = Upper), fill = "gray", alpha = 0.3) +  # Confidence interval
+  ggtitle("SIRMA Model Forecast") + 
+  xlab("Date") + ylab("90th Percentile of Max Lead Level") +
+  theme_minimal()
+
+# Optionally, you can check the residuals of the model to ensure it fits well
+checkresiduals(fit_sirma)
+
+```
+
+
+
+```{r}
+
+# Create a Date column for time series object (you can use Year and Month to construct it)
+df2_monthly <- df_percentiles %>%
+  mutate(Date = make_date(Year, Month, 1))
+df2_monthly = drop_na(df2_monthly)
+
+# Step 2: Create time series object
+ts_data <- ts(df2_monthly$Percentile_90, start = c(min(df2_monthly$Year), min(df2_monthly$Month)), frequency = 12)
+```
+
+
+
+```{r}
+df_percentiles <- df2 %>%
+  group_by(Year, season) %>%
+  summarise(Percentile_90 = quantile(Max, 0.9, na.rm = TRUE)) 
+
+
+# Load required packages
+library(dplyr)
+library(lubridate)
+library(forecast)
+library(ggplot2)
+
+# Assuming df2 is already cleaned and you have a 'Max' variable
+# Map seasons to months
+df2_monthly <- df_percentiles %>%
+  mutate(Month = case_when(
+    season == "Fall" ~ 10,   # Fall corresponds to September
+    season == "Winter" ~ 1,
+    season == "Summer" ~ 7,
+    season == "Spring"~ 4,# Winter corresponds to December
+    TRUE ~ NA_real_         # Handle any missing or unexpected values
+  )) %>%
+  mutate(Date = make_date(Year, Month, 1)) %>%
+  drop_na()
+
+# Step 2: Create time series object
+ts_data <- ts(df2_monthly$Percentile_90, start = c(min(df2_monthly$Year), min(df2_monthly$Month)), frequency = 4)
+
+
+
+
+# Step 3: Check for stationarity (optional but recommended)
+# Augmented Dickey-Fuller test (ADF) to check for stationarity
+adf_test <- adf.test(ts_data)
+
+# If p-value is high, the series is non-stationary and may require differencing
+if (adf_test$p.value > 0.05) {
+  ts_data_diff <- diff(ts_data)  # Apply differencing to make the series stationary
+  # Now the series is stationary, check the ADF test again after differencing
+  adf_test_diff <- adf.test(ts_data_diff)
+  print(adf_test_diff)  # To check the ADF test after differencing
+} else {
+  ts_data_diff <- ts_data
+}
+
+# Step 4: Fit the SIRMA model (Seasonal ARIMA)
+fit_sirma <- auto.arima(ts_data_diff, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+
+# Step 5: Check the model summary
+summary(fit_sirma)
+
+# Step 6: Forecast the future
+forecast_horizon <- 4  # Number of months to forecast (adjust as needed)
+forecast_values <- forecast(fit_sirma, h = forecast_horizon)
+
+
+# Plot the forecast with points displayed
+autoplot(forecast_values) + 
+  geom_point(aes(x = time(ts_data), y = ts_data), color = "blue", size = 2) +  # Add points for actual data
+  ggtitle("SIRMA Model Forecast") + 
+  xlab("Year") + ylab("Monthly Max Lead Level")
+
+# Optionally, you can check the residuals of the model to ensure it fits well
+checkresiduals(fit_sirma)
+
+```
+
+
+
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(survival)
+library(survminer)
+
+# Clean column names
+names(finalidk) <- make.names(names(finalidk))
+
+# Convert to long format
+df_long <- finalidk %>%
+  pivot_longer(cols = c("Draw1", "Draw2", "Draw3"),
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)
+
+# Identify first Draw_Num where max Lead is reached, and set Event = 1 at that point and after
+df_long <- df_long %>%
+  group_by(Address, Date) %>%
+  mutate(Max_Lead = max(Lead, na.rm = TRUE),
+         Max_Draw = min(Draw_Num[Lead == Max_Lead], na.rm = TRUE),
+         Event = ifelse(Draw_Num >= Max_Draw, 1, 0)) %>%
+  ungroup()
+
+# Fit survival model
+fit <- survfit(Surv(Draw_Num, Event) ~ 1, data = df_long)
+
+# Plot survival curve
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Reaching Max Lead Level (and Beyond)",
+           xlab = "Draw Number",
+           ylab = "Probability of Not Yet Reaching Max Lead")
+
+# Print mean survival time
+mean_survival_time <- mean(fit$time)
+print(mean_survival_time)
+summary(fit)
+
+```
+
+
+
+
+# Identify first Draw_Num where max Lead is reached, and set Event = 1 at that point and after
+df_long <- df_long %>%
+  group_by(Address, Date.Sampled) %>%
+  mutate(Max_Lead = max(Lead, na.rm = TRUE),
+         Max_Draw = min(Draw_Num[Lead == Max_Lead], na.rm = TRUE),
+         Event = ifelse(Draw_Num >= Max_Draw, 1, 0)) %>%
+  ungroup()
+
+
+df_long <- df_long %>%
+  group_by(Address, Date) %>%
+  mutate(First_Exceed_Draw = min(Draw_Num[Lead > 10], na.rm = TRUE),
+         First_Exceed_Draw = ifelse(is.infinite(First_Exceed_Draw), NA, First_Exceed_Draw),  # Handle if never exceeded 10
+         Event = ifelse(!is.na(First_Exceed_Draw) & Draw_Num >= First_Exceed_Draw, 1, 0)) %>%
+  ungroup()
+
+# Create a survival object
+df_long <- df_long %>%
+  mutate(Event = ifelse(Lead > 10, 1, 0))  # 1 if Lead > 15, else 0
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(survival)
+library(survminer)
+
+# Clean column names
+names(finalidk) <- make.names(names(finalidk))
+
+# Convert to long format
+df_long <- finalidk %>%
+  pivot_longer(cols = c("Draw1", "Draw2", "Draw3"),
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  mutate(Draw_Num = as.numeric(str_extract(Draw, "\\d+"))) %>%
+  arrange(Address, Draw_Num)
+
+# Identify first Draw_Num where max Lead is reached, and set Event = 1 at that point and after
+# Set Event to 1 at first Draw > 10, and stay 1 after
+df_long <- df_long %>%
+  group_by(Address, Date) %>%
+  mutate(First_Exceed_Draw = min(Draw_Num[Lead > 10], na.rm = TRUE),
+         First_Exceed_Draw = ifelse(is.infinite(First_Exceed_Draw), NA, First_Exceed_Draw),  # Handle if never exceeded 10
+         Event = ifelse(!is.na(First_Exceed_Draw) & Draw_Num >= First_Exceed_Draw, 1, 0)) %>%
+  ungroup()
+
+# Fit survival model
+fit <- survfit(Surv(Draw_Num, Event) ~ 1, data = df_long)
+
+# Plot survival curve
+ggsurvplot(fit,
+           conf.int = TRUE,
+           title = "Time to Reaching Max Lead Level (and Beyond)",
+           xlab = "Draw Number",
+           ylab = "Probability of Not Yet Reaching Max Lead")
+
+# Print mean survival time
+mean_survival_time <- mean(fit$time)
+print(mean_survival_time)
+
+# Print the summary of the fit
+summary(fit)
+
+```
+
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Step 1: Compute max per address
+df_max <- df %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Draw",
+               values_to = "Lead") %>%
+  group_by(Address, Date.Sampled) %>%
+  summarise(max1 = max(as.numeric(Lead), na.rm = TRUE), .groups = "drop")
+
+df1 <- df %>%
+  left_join(df_max, by = c("Address", "Date.Sampled"))
+
+
+
+
+# Step 1: Filter finalidk to keep only rows with Max_Lead > 15
+finalidk_filtered <- finalidk %>%
+  filter(Max > 15)
+
+# Step 2: Join the filtered results with df
+df_joined <- df1 %>%
+  left_join(finalidk_filtered, by = "Address")
+
+
+```
+<10
+-76.90625
+
+>10 
+25.98425
+
+```{r}
+df_joined <- df_joined %>%
+  mutate(max1 = ifelse(is.infinite(max1), 0.5, max1))
+
+df_joined$error=df_joined$Max-df_joined$max1
+
+df_joined$error2 <- ((df_joined$Max - df_joined$max1) / df_joined$max1) * 100
+
+df_joined$error3 <- ((-df_joined$Max + df_joined$max1) / df_joined$Max) * 100
+
+mean(df_joined$error, na.rm=T)
+median(df_joined$error, na.rm=T)
+
+mean(df_joined$error2, na.rm=T)
+median(df_joined$error2, na.rm=T)
+
+mean(df_joined$error3, na.rm=T)
+median(df_joined$error3, na.rm=T)
+```
+```{r}
+
+ggplot(df_joined, aes(x = error2)) +
+  geom_histogram(binwidth = 10, fill = "steelblue", color = "white") +
+  labs(title = "Histogram of Errors",
+       x = "Error",
+       y = "Frequency") +
+  theme_minimal()+
+  xlim(-100, 1000)
+```
+
+
+
+```{r}
+library(ggplot2)
+
+ggplot(df_joined, aes(x = error)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
+  labs(title = "Histogram of Errors",
+       x = "Error",
+       y = "Frequency") +
+  theme_minimal()+
+  xlim(-100, 100)
+
+```
+
+
+
+```{r}
+# Mean of Max where max1 > 10
+mean_max <- df_joined %>%
+  filter(max1 > 10) %>%
+  summarise(
+    mean_Max = mean(Max, na.rm = TRUE),
+    mean_max1 = mean(max1, na.rm = TRUE)
+  )
+
+# Median of Max where max1 > 10
+median_max <- df_joined %>%
+  filter(max1 > 10) %>%
+  summarise(
+    med_Max = median(Max, na.rm = TRUE),
+    med_max1 = median(max1, na.rm = TRUE)
+  )
+
+mean_max
+median_max
+
+```
+
+
+
+```{r}
+# Mean of Max where max1 > 10
+mean_max <- df_joined %>%
+  filter(Max >= 10) %>%
+  summarise(
+    mean_Max = mean(Max, na.rm = TRUE),
+    mean_max1 = mean(max1, na.rm = TRUE)
+  )
+
+# Median of Max where max1 > 10
+median_max <- df_joined %>%
+  filter(Max >= 10) %>%
+  summarise(
+    med_Max = median(Max, na.rm = TRUE),
+    med_max1 = median(max1, na.rm = TRUE)
+  )
+
+mean_max
+median_max
+```
+
+
+```{r}
+
+# Mean of Max where max1 > 10
+mean_max <- df_joined %>%
+  filter(max1 < 10) %>%
+  summarise(
+    mean_Max = mean(Max, na.rm = TRUE),
+    mean_max1 = mean(max1, na.rm = TRUE)
+  )
+
+# Median of Max where max1 > 10
+median_max <- df_joined %>%
+  filter(max1 < 10) %>%
+  summarise(
+    med_Max = median(Max, na.rm = TRUE),
+    med_max1 = median(max1, na.rm = TRUE)
+  )
+
+mean_max
+median_max
+```
+
+
+```{r}
+
+# Mean of Max where max1 > 10
+mean_max <- df_joined %>%
+  filter(max1 < 5) %>%
+  summarise(
+    mean_Max = mean(Max, na.rm = TRUE),
+    mean_max1 = mean(max1, na.rm = TRUE)
+  )
+
+# Median of Max where max1 > 10
+median_max <- df_joined %>%
+  filter(max1 < 5) %>%
+  summarise(
+    med_Max = median(Max, na.rm = TRUE),
+    med_max1 = median(max1, na.rm = TRUE)
+  )
+
+mean_max
+median_max
+```
+
+
+
+```{r}
+
+# Mean of Max where max1 > 10
+mean_max <- df_joined %>%
+  filter(max1 > 25) %>%
+  summarise(
+    mean_Max = mean(Max, na.rm = TRUE),
+    mean_max1 = mean(max1, na.rm = TRUE)
+  )
+
+# Median of Max where max1 > 10
+median_max <- df_joined %>%
+  filter(max1 > 25) %>%
+  summarise(
+    med_Max = median(Max, na.rm = TRUE),
+    med_max1 = median(max1, na.rm = TRUE)
+  )
+
+mean_max
+median_max
+```
+
+
+```{r}
+# Mean of Max where max1 > 10
+mean_max <- df_joined %>%
+  filter(max1 > 10) %>%
+  summarise(
+    mean_Max = mean(error2, na.rm = TRUE)
+    
+  )
+
+# Median of Max where max1 > 10
+median_max <- df_joined %>%
+  filter(max1 < 10) %>%
+  filter(max1 > 5 ) %>%
+  summarise(
+    med_Max = median(error3, na.rm = TRUE)
+   
+  )
+
+mean_max
+median_max
+```
+
+
+
+```{r}
+mean(df_joined$max1, na.rm=T)
+```
+
+.5-x/x=-76
+

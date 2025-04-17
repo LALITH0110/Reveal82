@@ -1,0 +1,5966 @@
+---
+title: "Regressions"
+output: html_document
+date: "2025-02-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+library!
+```{r}
+library(nnet)
+```
+
+
+additional df!
+```{r}
+
+library(readxl)
+finalgood=read_xlsx("C:/Users/vreid/Downloads/finaltrygood.xlsx")
+
+finalgood$Max[finalgood$Max == -Inf] <- NA
+finalgood$Max[finalgood$Max == 0] <- NA
+finalgood$Max=as.numeric(finalgood$Max)
+finalgood$ward = as.character(finalgood$ward)
+finalgood$property_zip <- sub("-.*", "", finalgood$property_zip)
+finalgood$property_zip[finalgood$property_zip == 0] <- NA
+finalgood$property_zip = as.character(finalgood$property_zip)
+finalgood$Age=as.numeric(finalgood$Age)
+finalgood$tract_pop=as.numeric(finalgood$tract_pop)
+finalgood$tract_white_perc=as.numeric(finalgood$tract_white_perc)
+finalgood$Rooms=as.numeric(finalgood$Rooms)
+
+finalgood$Bedrooms=as.numeric(finalgood$Bedrooms)
+finalgood$`Near Major Road` = as.character(finalgood$`Near Major Road`)
+finalgood$`Prior Tax Year Market Value Estimate (Land)`=as.numeric(finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+finalgood$`Land Square Feet`=as.numeric(finalgood$`Land Square Feet`)
+```
+
+```{r}
+
+ggplot(finalidk%>% filter(!is.na(ward)), aes((ward))) +
+  geom_bar(alpha = 0.7, fill = "steelblue") + 
+  labs(title = "Bar Plot of Wards",
+       x = "Ward",
+       y = "Count") +
+  theme_minimal()
+
+```
+
+
+
+
+what i need!
+```{r}
+
+finalidk=read.csv("C:/Users/vreid/Downloads/Finaldatasetlast2.csv")
+finalidk$Max[finalidk$Max == -Inf] <- NA
+finalidk$Max[finalidk$Max == 0] <- NA
+finalidk$Max=as.numeric(finalidk$Max)
+finalidk$ward = as.character(finalidk$ward)
+finalidk$property_zip <- sub("-.*", "", finalidk$property_zip)
+finalidk$property_zip[finalidk$property_zip == 0] <- NA
+finalidk$property_zip = as.character(finalidk$property_zip)
+finalidk$Age=as.numeric(finalidk$Age)
+finalidk$tract_pop=as.numeric(finalidk$tract_pop)
+finalidk$tract_white_perc=as.numeric(finalidk$tract_white_perc)
+finalidk$Rooms=as.numeric(finalidk$Rooms)
+
+finalidk$Bedrooms=as.numeric(finalidk$Bedrooms)
+finalidk$Near.Major.Road = as.character(finalidk$Near.Major.Road)
+finalidk$Wall.Material = as.character(finalidk$Wall.Material)
+finalidk$Roof.Material = as.character(finalidk$Roof.Material)
+finalidk$Garage.indicator = as.character(finalidk$Garage.indicator)
+finalidk$Porch = as.character(finalidk$Porch)
+finalidk$Garage.indicator = as.character(finalidk$Garage.indicator)
+finalidk$Construction.Quality = as.character(finalidk$Construction.Quality)
+finalidk$Use = as.character(finalidk$Use)
+finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.=as.numeric(finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.)
+finalidk$Land.Square.Feet=as.numeric(finalidk$Land.Square.Feet)
+
+
+
+finalidk$binary_max <- ifelse(finalidk$Max < 10, 0, 1)
+finalidk$class_max <- cut(finalidk$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+finalidk$class <- cut(finalidk$Max, 
+                           breaks = c(0, 5, 10, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+
+```
+
+key to analysis!
+
+other vars: "Wall.Material", "Roof.Material", "Basement", "Construction.Quality", "Porch", "Garage.indicator","Use", "Rooms", "tract_pop", "median income", "tax rate"
+```{r}
+
+
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit <- list()
+aic_values <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+    aic_values[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values <- sort(aic_values)
+
+# Get the top 25 models with the lowest AICs
+top_25_models <- all_models_logit[names(sorted_aic_values[1:25])]
+
+# Print the top 25 AICs with their formulas
+
+
+```
+
+```{r}
+finalidk_clean4 <- finalidk[!is.na(finalidk$binary_max) & 
+                            !is.na(finalidk$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                            !is.na(finalidk$Age) & 
+                           
+                            !is.na(finalidk$Bedrooms) & 
+                            !is.na(finalidk$`tract_white_perc`) & 
+                            !is.na(finalidk$`Land.Square.Feet`), ]
+
+
+
+library(pROC)
+model=glm(finalidk_clean4$binary_max ~ finalidk_clean4$`Age`* finalidk_clean4$`Bedrooms` * finalidk_clean4$`tract_white_perc` * finalidk_clean4$`Prior.Tax.Year.Market.Value.Estimate..Land.`* finalidk_clean4$`Land.Square.Feet`, family=binomial("logit"))
+roc_curve <- roc(na.omit(finalidk_clean4$binary_max), na.omit(fitted(model)))
+plot(roc_curve)
+auc(roc_curve)
+
+```
+
+```{r}
+
+variables <- c("Age",   "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit <- list()
+aic_values <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+    aic_values[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values <- sort(aic_values)
+
+# Get the top 25 models with the lowest AICs
+top_25_models <- all_models_logit[names(sorted_aic_values[1:25])]
+
+# Print the top 25 AICs with their formulas
+
+```
+
+
+key to analysis!
+```{r}
+library(nnet)
+
+
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "tract_pop",  "Land.Square.Feet",  "ward", "Prior.Tax.Year.Market.Value.Estimate..Land.")
+
+all_models_multi <- list()
+aic_values1 <- numeric()
+
+for (i in 1:2) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$class_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- multinom(as.formula(formula_str))
+    all_models_multi[[formula_str]] <- summary(model)
+    aic_values1[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values1 <- sort(aic_values1)
+
+# Get the top 25 models with the lowest AICs
+top_25_models1 <- all_models_multi[names(sorted_aic_values1[1:25])]
+
+```
+
+lowest aic--i built it into my models above no need for it
+
+```{r}
+# Create an empty list to store models
+all_models_logit <- list()
+# Create an empty vector to store AIC values for each model
+aic_values <- c()
+
+# Loop over the number of predictors in subsets
+for (i in 1:length(variables)) {
+    subsets <- combn(variables, i, simplify = FALSE)
+    
+    # Loop over each subset of predictors
+    for (subset in subsets) {
+        # Create the formula as a string
+        formula_str <- paste("binary_max ~", paste(subset, collapse = " + "))
+        
+        # Fit the logistic regression model
+        model <- glm(as.formula(formula_str), data = finalidk, family = binomial(link = "logit"))
+        
+        # Store the model in the list
+        all_models_logit[[formula_str]] <- model
+        
+        # Extract AIC and add it to the AIC values vector
+        aic_values[formula_str] <- AIC(model)
+    }
+}
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values <- sort(aic_values)
+
+# Get the top 25 models with the lowest AICs
+top_25_models <- all_models_logit[names(sorted_aic_values[1:25])]
+
+# Print the top 25 AICs with their formulas
+top_25_models
+
+
+
+```
+
+
+
+not needed
+
+```{r}
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms", "Near Major Road", "tract_white_perc", "Prior Tax Year Market Value Estimate (Land)", "Land Square Feet")
+
+all_models <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$public ~", paste(paste0("finalgood$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models)
+
+all_models_private <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$private ~", paste(paste0("finalgood$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_private[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_private)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_logit)
+
+ all_models_lin <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$Max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- lm(as.formula(formula_str))
+    all_models_lin[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_lin)
+```
+
+
+
+not needed
+```{r}
+
+#for final idk
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models <- list()
+
+for (i in 1:length(variables)) #change 2 {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$public ~", paste(paste0("finalgood$`", subset, "`"), collapse = " * "))
+    model <- multinom(as.formula(formula_str))
+    all_models[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models)
+
+all_models_private <- list()
+
+for (i in 1:length(variables)) #change 2 if needed {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$private ~", paste(paste0("finalgood$`", subset, "`"), collapse = " * "))
+    model <- multinom(as.formula(formula_str))
+    all_models_private[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_private)
+
+all_models_logit <- list()
+
+for (i in 1:length(variables)) #change to 2 if need {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_logit)
+
+
+
+for (i in 1:length(variables)) #change 2 {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- lm(as.formula(formula_str))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_lin)
+```
+
+
+correlations
+```{r}
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet")
+subset_data <- finalidk[, variables]
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(subset_data, use = "complete.obs")
+correlation_matrix
+```
+
+
+
+PCA regression--good
+
+```{r}
+library(pls)
+library(caret)
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet")
+# Select only relevant columns
+data_pcr <- finalidk[, c("Max", variables)]  
+
+# Remove rows with NA values
+data_pcr <- na.omit(data_pcr)
+
+# Standardize predictors (important for PCA)
+predictors <- scale(data_pcr[, variables])
+response <- data_pcr$Max
+
+# Fit PCR model using cross-validation
+pcr_model <- pcr(response ~ predictors, data = data_pcr, scale = TRUE, validation = "CV")
+
+# Summary of PCR model
+summary(pcr_model)
+
+validationplot(pcr_model, val.type = "MSEP")  # Mean Squared Error Plot
+coef(pcr_model, ncomp = 6)  # Example: Using 2 principal components
+predictions <- predict(pcr_model, ncomp = 3, newdata = data_pcr)
+
+# Compute R-squared and RMSE
+actuals <- response
+rss <- sum((actuals - predictions)^2)
+tss <- sum((actuals - mean(actuals))^2)
+r_squared <- 1 - (rss/tss)
+rmse <- sqrt(mean((actuals - predictions)^2))
+
+cat("R-squared:", r_squared, "\nRMSE:", rmse, "\n")
+
+```
+
+
+bad
+```{r}
+
+
+# Create a copy of finalidk
+finalidk2 <- finalidk[, !(names(finalidk) %in% c("Total.Building.Square.Feet", "Renovation", "Multi.Family.Indicator"))]
+
+finalidk_clean <- na.omit(finalidk2)
+
+
+
+library(randomForest)
+
+# Fit Random Forest
+rf_model <- randomForest(Max ~ Rooms + tract_white_perc + 
+                         Prior.Tax.Year.Market.Value.Estimate..Land.  +Land.Square.Feet, 
+                         data = finalidk_clean, ntree = 200, mtry = 3, nodesize = 5, importance = TRUE)
+
+
+# Check Model Summary
+print(rf_model)
+
+# Variable Importance Plot
+varImpPlot(rf_model)
+
+```
+train_indices <- sample(1:nrow(finalidk_clean), size = 0.6 * nrow(finalidk_clean))
+train_data <- predictors_scaled[train_indices, ]
+train_response <- response[train_indices]
+test_data <- predictors_scaled[-train_indices, ]
+test_response <- response[-train_indices]
+best!!
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+# Split the data into training and test sets
+set.seed(1)  # For reproducibility
+
+
+# Fit Decision Tree
+tree_model <- rpart(binary_max ~ Age +  Bedrooms + 
+                    tract_white_perc  +Land.Square.Feet + Near.Major.Road+ Prior.Tax.Year.Market.Value.Estimate..Land., data = finalidk, method = "anova")
+
+# Plot the Tree
+rpart.plot(tree_model, type = 1, extra = 101)
+
+
+
+#for binary
+#confusion_matrix <- table(Actual = test_data$binary_max, 
+                       #  Predicted = test_data$Predicted_Max_Category)
+```
+
+maye?
+```{r}
+# Install the package if needed
+install.packages("ipred")
+library(ipred)
+
+# Split the data into training and test sets
+set.seed(123)  # For reproducibility
+train_indices <- sample(1:nrow(finalidk_clean), size = 0.6 * nrow(finalidk_clean))
+
+# Ensure data is in data frame format
+train_data <- as.data.frame(predictors_scaled[train_indices, ])
+train_response <- response[train_indices]
+test_data <- as.data.frame(predictors_scaled[-train_indices, ])
+test_response <- response[-train_indices]
+
+# Combine response and predictors for training
+train_df <- data.frame(binary_max = train_response, train_data)
+# Fit a Bagging model
+bagging_model <- bagging(binary_max ~ Rooms + Bedrooms + tract_white_perc + 
+                        Prior.Tax.Year.Market.Value.Estimate..Land. , 
+                        data = train_df, nbagg = 100)
+
+# Print model summary
+summary(bagging_model)
+# Predict probabilities
+bagging_prob <- predict(bagging_model, newdata = test_data, type = "prob")
+
+# Convert probabilities to class labels (threshold = 0.5)
+bagging_predictions <- ifelse(bagging_prob > 0.5, 1, 0)
+
+# Ensure predictions and test response are factors
+bagging_predictions <- as.factor(bagging_predictions)
+test_response <- as.factor(test_response)
+
+# Create Confusion Matrix
+conf_matrix <- table(Actual = test_response, Predicted = bagging_predictions)
+print(conf_matrix)
+
+
+```
+
+maybe?
+```{r}
+# Install gbm package if needed
+
+library(gbm)
+
+# Fit a Gradient Boosting model
+boosting_model <- gbm(binary_max ~ Rooms + Bedrooms + tract_white_perc + 
+                      Prior.Tax.Year.Market.Value.Estimate..Land. , 
+                      data = train_df, 
+                      distribution = "bernoulli",  # For regression
+                      n.trees = 1000, 
+                      interaction.depth = 3, 
+                      shrinkage = 0.01, 
+                      cv.folds = 5,  # Cross-validation
+                      verbose = TRUE)
+
+# Print model summary
+summary(boosting_model)
+
+# Predict and evaluate
+boosting_predictions <- predict(boosting_model, newdata = test_data, n.trees = 1000)
+table(boosting_predictions, test_response)  # For classification
+
+```
+
+
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+# Split the data into training and test sets
+set.seed(123)  # For reproducibility
+train_indices <- sample(1:nrow(finalidk_clean), size = 0.6 * nrow(finalidk_clean))
+
+# Ensure data is in data frame format
+train_data <- as.data.frame(predictors_scaled[train_indices, ])
+train_response <- response[train_indices]
+test_data <- as.data.frame(predictors_scaled[-train_indices, ])
+test_response <- response[-train_indices]
+
+# Combine response and predictors for training
+train_df <- data.frame(binary_max = train_response, train_data)
+
+# Fit Decision Tree (classification, not anova)
+tree_model <- rpart(binary_max ~ Age + tract_pop + Rooms + Bedrooms + 
+                    tract_white_perc + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                    Land.Square.Feet , 
+                    data = finalidk_clean, method = "class")
+
+# Plot the Tree
+rpart.plot(tree_model, type = 1, extra = 101)
+
+# Make Predictions
+predictions <- predict(tree_model, test_data, type = "class")  # Predict class labels
+
+# Ensure response is a factor for confusion matrix
+test_response <- as.factor(test_response)
+predictions <- as.factor(predictions)
+
+# Create Confusion Matrix
+confusion_matrix <- table(Actual = test_response, Predicted = predictions)
+print(confusion_matrix)
+
+```
+
+
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+# Remove unnecessary columns
+finalidk2 <- finalidk[, !(names(finalidk) %in% c("Total.Building.Square.Feet", "Renovation", "Multi.Family.Indicator"))]
+
+# Remove rows with missing values
+finalidk_clean <- na.omit(finalidk2)
+
+# Convert class_max to factor for classification
+finalidk_clean$class_max <- as.factor(finalidk_clean$class_max)
+
+# Split the data into training (60%) and testing (40%)
+set.seed(123)  # For reproducibility
+train_indices <- sample(1:nrow(finalidk_clean), size = 0.6 * nrow(finalidk_clean))
+
+# Create training and testing sets
+train_data <- finalidk_clean[train_indices, ]
+test_data <- finalidk_clean[-train_indices, ]
+
+# Fit Decision Tree (classification)
+tree_model <- rpart(class_max ~ Age + tract_pop + Rooms + Bedrooms + 
+                    tract_white_perc + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                    Land.Square.Feet , 
+                    data = train_data, method = "class")
+
+# Plot the Decision Tree
+rpart.plot(tree_model, type = 1, extra = 101, box.palette = "GnBu")
+
+# Make Predictions on the Test Set
+predictions <- predict(tree_model, test_data, type = "class")
+
+# Ensure both actual and predicted values are factors
+test_actual <- as.factor(test_data$class_max)
+predictions <- as.factor(predictions)
+
+# Create and Print Confusion Matrix
+confusion_matrix <- table(Actual = test_actual, Predicted = predictions)
+print(confusion_matrix)
+
+```
+
+
+maybe?--yessss
+```{r}
+# Load necessary library
+library(class)
+
+# Assuming finalidk_clean is your cleaned dataset
+# Define your predictors and response variable
+predictors <- finalidk_clean[, c("Age", "tract_pop", "Rooms", "Bedrooms", 
+                                   "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", 
+                                   "Land.Square.Feet")]
+response <- finalidk_clean$class_max  # Adjust this to your target variable
+
+# Scale the predictors
+predictors_scaled <- scale(predictors)
+
+# Split the data into training and test sets
+set.seed(123)  # For reproducibility
+train_indices <- sample(1:nrow(finalidk_clean), size = 0.6 * nrow(finalidk_clean))
+train_data <- predictors_scaled[train_indices, ]
+train_response <- response[train_indices]
+test_data <- predictors_scaled[-train_indices, ]
+test_response <- response[-train_indices]
+
+# Choose the number of neighbors (k)
+k <- 5  # You can experiment with different values of k
+
+# Perform KNN
+predictions <- knn(train = train_data, test = test_data, cl = train_response, k = k)
+
+# If predicting a numeric variable (regression), calculate the mean of k neighbors instead
+# predictions <- rowMeans(sapply(1:k, function(i) {
+ # knn(train = train_data, test = test_data, cl = train_response, k = i)
+ #}))
+
+# Evaluate the model
+# If it's regression, calculate the mean squared error (MSE) or R-squared
+# If it's classification, you can create a confusion matrix
+
+# For regression evaluation
+mse <- mean((as.numeric(predictions) - test_response)^2)
+cat("Mean Squared Error:", mse, "\n")
+
+# For classification evaluation
+confusion_matrix <- table(test_response, predictions)
+ print(confusion_matrix)
+
+```
+
+good?--good!
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Assuming finalidk_clean is your cleaned dataset
+
+# Select the features you want to use for clustering
+features <- finalidk_clean[, c("Age", "Rooms", "Bedrooms", 
+                                 "tract_white_perc", 
+                                 "Prior.Tax.Year.Market.Value.Estimate..Land.", 
+                                 "Land.Square.Feet")]
+
+# Scale the features
+features_scaled <- scale(features)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Determine the number of clusters (k)
+k <- 5  # You can experiment with different values of k
+
+# Run K-means clustering
+kmeans_result <- kmeans(features_scaled, centers = k, nstart = 25)
+
+# Print the clustering results
+print(kmeans_result)
+
+# Add cluster assignments to the original dataset
+finalidk_clean$Cluster <- as.factor(kmeans_result$cluster)
+
+# Visualize the clusters (using first two features for 2D visualization)
+ggplot(finalidk_clean, aes(x = Age, y = Rooms, color = Cluster)) +
+  geom_point() +
+  labs(title = "K-means Clustering", x = "Age", y = "Max") +
+  theme_minimal()
+
+```
+
+
+```{r}
+finalidk_clean2=finalidk_clean
+finalidk_clean2$Max[finalidk_clean$Max == 6000] <- NA
+
+ggplot(finalidk_clean2, aes(x = Age, y = Max, color = Cluster)) +
+  geom_point() +
+  labs(title = "K-means Clustering", x = "Age", y = "Max") +
+  theme_minimal()
+```
+
+good?
+
+```{r}
+# Assuming finalidk_clean contains your dataset with cluster assignments
+predictions <- list()
+model_summaries <- list()
+
+for (cluster in unique(finalidk_clean$Cluster)) {
+  cluster_data <- finalidk_clean[finalidk_clean$Cluster == cluster, ]
+  
+  model3 <- glm(binary_max ~ Age + Rooms + Bedrooms + tract_white_perc + 
+                Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                Land.Square.Feet, family=binomial(link = "logit"), data = cluster_data)
+  
+  predictions[[as.character(cluster)]] <- model3
+  model_summaries[[as.character(cluster)]] <- summary(model3)  # Store the summary for each cluster
+  cluster_data$Predicted_Max <- predict(model3, newdata = cluster_data, type = "response")
+  
+  finalidk_clean[finalidk_clean$Cluster == cluster, "Predicted_Max"] <- cluster_data$Predicted_Max
+}
+
+# Now you can inspect summaries for each model
+model_summaries
+
+
+```
+
+
+
+
+
+```{r}
+# Elbow Method to determine optimal k
+wss <- numeric(10)  # Vector to store within-cluster sum of squares
+for (i in 1:10) {
+  kmeans_model <- kmeans(features_scaled, centers = i, nstart = 25)
+  wss[i] <- kmeans_model$tot.withinss
+}
+
+# Plot the Elbow Method
+plot(1:10, wss, type = "b", pch = 19, xlab = "Number of Clusters (k)", 
+     ylab = "Total Within-Cluster Sum of Squares", 
+     main = "Elbow Method for K-means Clustering")
+
+```
+
+
+
+these are varibles I want in aggegrated data:
+"Wall.Material", "Roof.Material", "Basement", "Construction.Quality", "Porch", "Garage.indicator","Use", "Rooms", "tract_pop"
+
+
+
+variables <- c("Age",  "Tax.Rate", "Tract.Median.Income", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+
+KEYYYYY
+aggegrating my data-GOOD
+
+IF NEED TO CHANGE AGGERGATING I CAN DO by = list(Address = finalidk$Address, Neighborhood=finalidk$township_name)
+or elemtry school district or zipcode!! or wards!!
+
+```{r}
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list(Address = finalidk$Address), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list(Address = finalidk$Address), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+block_level_data <- merge(numeric_agg, categorical_agg, by = "Address")
+
+# View aggregated data
+head(block_level_data)
+
+```
+
+
+
+```{r}
+block_level_data$binary_max <- ifelse(block_level_data$Max < 10, 0, 1)
+block_level_data$class_max <- cut(block_level_data$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+fitting basic log regression see if it works
+```{r}
+
+# Fit a logistic regression model
+block_model <- glm(binary_max ~ Bedrooms, 
+                   family = binomial(link = "logit"), 
+                   data = block_level_data)
+
+summary(block_model)
+
+```
+
+
+
+
+
+more of good one
+
+
+
+
+
+correlations
+
+```{r}
+# Compute correlation matrix for numeric block-level features
+block_corr <- cor(block_level_data[, c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop")], use = "complete.obs")
+
+# Print correlation matrix
+print(block_corr)
+
+```
+
+
+```{r}
+# Find top 5 blocks with highest average market value
+block_level_data[order(-block_level_data$Max), ][1:5, ]
+
+
+```
+
+
+
+
+
+
+clustering
+```{r}
+# Scale the data before clustering
+# Clean the data by removing rows where any column has NaN, NA, or infinite values
+clean <- block_level_data[!is.na(block_level_data$binary_max) & 
+                          !is.na(block_level_data$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                          !is.na(block_level_data$Age) & 
+                          
+                          !is.na(block_level_data$Bedrooms) & 
+                          !is.na(block_level_data$`tract_white_perc`) & 
+                          !is.na(block_level_data$`Land.Square.Feet`) &
+                          !is.nan(block_level_data$binary_max) &
+                          !is.nan(block_level_data$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                          !is.nan(block_level_data$Age) & 
+                          
+                          !is.nan(block_level_data$Bedrooms) & 
+                          !is.nan(block_level_data$`tract_white_perc`) & 
+                          !is.nan(block_level_data$`Land.Square.Feet`) &
+                          !is.infinite(block_level_data$binary_max) &
+                          !is.infinite(block_level_data$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                          !is.infinite(block_level_data$Age) & 
+                           
+                          !is.infinite(block_level_data$Bedrooms) & 
+                          !is.infinite(block_level_data$`tract_white_perc`) & 
+                          !is.infinite(block_level_data$`Land.Square.Feet`), ]
+
+
+block_data1 <- scale(block_level_data[, c("Age",   "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet")])
+block_data1 <- as.data.frame(block_data1)
+# Clean the data by removing rows where any column has NaN, NA, or infinite values
+block_data1 <- block_data1[ 
+                     !is.na(block_data1$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                     !is.na(block_data1$Age) & 
+                      
+                     !is.na(block_data1$Bedrooms) & 
+                     !is.na(block_data1$`tract_white_perc`) & 
+                     !is.na(block_data1$`Land.Square.Feet`) &
+                     
+                     !is.nan(block_data1$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                     !is.nan(block_data1$Age) & 
+                     
+                     !is.nan(block_data1$Bedrooms) & 
+                     !is.nan(block_data1$`tract_white_perc`) & 
+                     !is.nan(block_data1$`Land.Square.Feet`) &
+                     
+                     !is.infinite(block_data1$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                     !is.infinite(block_data1$Age) & 
+                      
+                     !is.infinite(block_data1$Bedrooms) & 
+                     !is.infinite(block_data1$`tract_white_perc`) & 
+                     !is.infinite(block_data1$`Land.Square.Feet`), ]
+
+
+# Perform K-means clustering
+set.seed(123)
+kmeans_result <- kmeans(block_data1, centers = 3)  # 3 clusters
+
+kmeans_result
+
+```
+
+
+
+
+
+will take forever--add in ward or zipcode
+```{r}
+# Convert neighborhood to a factor
+finalidk$Neighborhood <- as.factor(finalidk$Neighborhood)
+
+# Run logistic regression including neighborhood effects
+logit_model2 <- glm(binary_max ~ Bedrooms + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                    Land.Square.Feet + tract_pop + Neighborhood, 
+                    family = binomial(link = "logit"), 
+                    data = finalidk)
+
+# Model summary
+summary(logit_model2)
+
+```
+
+
+
+
+
+--not now
+```{r}
+# Predict probabilities using the logistic model
+block_aggregated$Predicted_Prob <- predict(logit_model, newdata = block_aggregated, type = "response")
+
+# Convert probabilities to class predictions (threshold = 0.5)
+block_aggregated$Predicted_Class <- ifelse(block_aggregated$Predicted_Prob > 0.5, 1, 0)
+
+# View predictions
+head(block_aggregated[, c("Block_Number", "Predicted_Prob", "Predicted_Class")])
+
+```
+
+
+```{r}
+library(caret)  # For confusion matrix
+
+# Compare actual vs predicted values
+conf_matrix <- table(block_aggregated$binary_max, block_aggregated$Predicted_Class)
+
+# Print confusion matrix
+print(conf_matrix)
+
+# Compute accuracy
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", round(accuracy, 3)))
+
+```
+
+
+
+see other versions of risk score--add in other variables
+```{r}
+# Compute block-level risk score (sum of standardized variables)
+block_level_data$Risk_Score <- scale(block_level_data$Bedrooms) + scale(block_level_data$Age) + scale(block_level_data$Land.Square.Feet) +  scale(block_level_data$tract_white_perc) + 
+                               scale(block_level_data$Prior.Tax.Year.Market.Value.Estimate..Land.) + 
+                               scale(block_level_data$tract_pop)
+
+# Logistic regression using risk score
+logit_risk <- glm(binary_max ~ Risk_Score, 
+                  family = binomial(link = "logit"), 
+                  data = block_level_data)
+
+# Summary
+summary(logit_risk)
+
+# View risk scores
+head(block_level_data[, c("Block_Number", "Risk_Score")])
+
+```
+
+
+
+hiehrcy--this is gonna be long
+```{r}
+library(lme4)
+
+# Run hierarchical logistic regression with block and neighborhood effects
+logit_mixed <- glmer(binary_max ~ Bedrooms + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                     Land.Square.Feet + tract_pop + (1 | Neighborhood), 
+                     family = binomial(link = "logit"), 
+                     data = finalidk)
+
+# Model summary
+summary(logit_mixed)
+
+```
+
+
+```{r}
+library(ggplot2)
+
+# Predict probabilities from logistic regression
+finalidk$Predicted_Prob <- predict(block_model, newdata = finalidk, type = "response")
+
+# Plot using ggplot (assuming you have latitude/longitude per block)
+ggplot(finalidk, aes(x = Longitude, y = Latitude)) +
+  geom_point(aes(color = Predicted_Prob), size = 3) +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Predicted Probability of binary_max per Block", color = "Risk Level") +
+  theme_minimal()
+
+```
+
+
+```{r}
+# Select numeric variables for clustering
+block_data <- finalidk[, c("Bedrooms", "Prior.Tax.Year.Market.Value.Estimate..Land.", "tract_pop", "Land.Square.Feet")]
+
+# Standardize the variables
+block_data_scaled <- scale(block_data)
+
+# Perform K-means clustering (choose 3 clusters as an example)
+set.seed(123)
+kmeans_result <- kmeans(block_data_scaled, centers = 3)
+
+# Add cluster labels to dataset
+finalidk$Block_Cluster <- kmeans_result$cluster
+
+# Run logistic regression within each cluster
+library(dplyr)  # Replace with base R if necessary
+cluster_models <- lapply(unique(finalidk$Block_Cluster), function(cluster) {
+  subset_data <- finalidk[finalidk$Block_Cluster == cluster, ]
+  glm(binary_max ~ Bedrooms + Prior.Tax.Year.Market.Value.Estimate..Land. + tract_pop, 
+      family = binomial(link = "logit"), 
+      data = subset_data)
+})
+
+# View model summaries for each cluster
+lapply(cluster_models, summary)
+
+```
+
+
+not working
+```{r}
+library(brms)
+
+# Fit Bayesian logistic regression
+logit_bayes <- brm(binary_max ~ Bedrooms + tract_pop , 
+                   family = bernoulli(), 
+                   data = finalidk, 
+                   iter = 2000, warmup = 1000, chains = 4, cores = 2)
+
+# Model summary
+summary(logit_bayes)
+
+```
+
+
+do all regressions again with new aggergated. see the top all_models
+do ml again too.
+
+```{r}
+
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit2 <- list()
+aic_values2 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("block_level_data$binary_max ~", paste(paste0("block_level_data$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit2[[formula_str]] <- summary(model)
+    aic_values2[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values2 <- sort(aic_values2)
+
+# Get the top 25 models with the lowest AICs
+top_25_models2 <- all_models_logit2[names(sorted_aic_values2[1:25])]
+
+# Print the top 25 AICs with their formulas
+
+```
+
+
+key to analysis!
+```{r}
+library(nnet)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_multi2 <- list()
+aic_values3 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("block_level_data$class_max ~", paste(paste0("block_level_data$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_multi2[[formula_str]] <- summary(model)
+    aic_values3[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values3 <- sort(aic_values3)
+
+# Get the top 25 models with the lowest AICs
+top_25_models3 <- all_models_multi2[names(sorted_aic_values1[1:25])]
+
+```
+
+
+
+```{r}
+length(unique(finalidk$ward))
+```
+
+
+
+
+
+by neighborhood too
+
+IF NEED TO CHANGE AGGERGATING I CAN DO by = list( Neighborhood=finalidk$township_name)
+or elemtry school district or zipcode!! or wards!!
+
+```{r}
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age", "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list(Address = finalidk$Address, Neighborhood=finalidk$township_name), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list(Address = finalidk$Address, Neighborhood=finalidk$township_name), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+level_data <- merge(numeric_agg, categorical_agg, by = "Address")
+
+# View aggregated data
+head(level_data)
+
+```
+
+
+```{r}
+level_data$binary_max <- ifelse(level_data$Max < 10, 0, 1)
+level_data$class_max <- cut(level_data$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+fitting basic log regression see if it works
+```{r}
+
+# Fit a logistic regression model
+block_model <- glm(binary_max ~ Bedrooms, 
+                   family = binomial(link = "logit"), 
+                   data = level_data)
+
+summary(block_model)
+
+
+
+```
+
+
+
+
+
+more of good one
+
+
+
+
+
+correlations
+
+```{r}
+# Compute correlation matrix for numeric block-level features
+lock_corr <- cor(level_data[, c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop")], use = "complete.obs")
+
+# Print correlation matrix
+print(lock_corr)
+
+```
+
+
+```{r}
+# Find top 5 blocks with highest average market value
+wardlevel_data[order(-wardlevel_data$Max), ][1:5, ]
+
+
+```
+
+
+
+
+
+
+clustering
+```{r}
+# Clean the data by removing rows where any column has NaN, NA, or infinite values
+clean <- level_data[!is.na(level_data$binary_max) & 
+                    !is.na(level_data$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                    !is.na(level_data$Age) & 
+                     
+                    !is.na(level_data$Bedrooms) & 
+                    !is.na(level_data$`tract_white_perc`) & 
+                    !is.na(level_data$`Land.Square.Feet`) &
+                    !is.nan(level_data$binary_max) &
+                    !is.nan(level_data$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                    !is.nan(level_data$Age) & 
+                    
+                    !is.nan(level_data$Bedrooms) & 
+                    !is.nan(level_data$`tract_white_perc`) & 
+                    !is.nan(level_data$`Land.Square.Feet`) &
+                    !is.infinite(level_data$binary_max) &
+                    !is.infinite(level_data$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                    !is.infinite(level_data$Age) & 
+                    
+                    !is.infinite(level_data$Bedrooms) & 
+                    !is.infinite(level_data$`tract_white_perc`) & 
+                    !is.infinite(level_data$`Land.Square.Feet`), ]
+
+# Scale the numeric variables
+block_data1 <- scale(level_data[, c("Age", "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet")])
+
+block_data1 <- as.data.frame(block_data1)
+
+# Clean the scaled data by removing NaN, NA, and infinite values
+block_data1 <- block_data1[ 
+                     !is.na(block_data1$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                     !is.na(block_data1$Age) & 
+                      
+                     !is.na(block_data1$Bedrooms) & 
+                     !is.na(block_data1$`tract_white_perc`) & 
+                     !is.na(block_data1$`Land.Square.Feet`) &
+                     
+                     !is.nan(block_data1$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                     !is.nan(block_data1$Age) & 
+                     
+                     !is.nan(block_data1$Bedrooms) & 
+                     !is.nan(block_data1$`tract_white_perc`) & 
+                     !is.nan(block_data1$`Land.Square.Feet`) &
+                     
+                     !is.infinite(block_data1$`Prior.Tax.Year.Market.Value.Estimate..Land.`) &
+                     !is.infinite(block_data1$Age) & 
+                     
+                     !is.infinite(block_data1$Bedrooms) & 
+                     !is.infinite(block_data1$`tract_white_perc`) & 
+                     !is.infinite(block_data1$`Land.Square.Feet`), ]
+
+# Perform K-means clustering
+set.seed(123)
+kmeans_result <- kmeans(block_data1, centers = 3)  # 3 clusters
+
+kmeans_result
+
+
+```
+
+
+
+
+
+will take forever--add in ward or zipcode
+```{r}
+# Convert neighborhood to a factor
+finalidk$Neighborhood <- as.factor(finalidk$Neighborhood)
+
+# Run logistic regression including neighborhood effects
+logit_model2 <- glm(binary_max ~ Bedrooms + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                    Land.Square.Feet + tract_pop + Neighborhood, 
+                    family = binomial(link = "logit"), 
+                    data = finalidk)
+
+# Model summary
+summary(logit_model2)
+
+```
+
+
+
+
+
+--not now
+```{r}
+# Predict probabilities using the logistic model
+block_aggregated$Predicted_Prob <- predict(logit_model, newdata = block_aggregated, type = "response")
+
+# Convert probabilities to class predictions (threshold = 0.5)
+block_aggregated$Predicted_Class <- ifelse(block_aggregated$Predicted_Prob > 0.5, 1, 0)
+
+# View predictions
+head(block_aggregated[, c("Block_Number", "Predicted_Prob", "Predicted_Class")])
+
+```
+
+
+```{r}
+library(caret)  # For confusion matrix
+
+# Compare actual vs predicted values
+conf_matrix <- table(block_aggregated$binary_max, block_aggregated$Predicted_Class)
+
+# Print confusion matrix
+print(conf_matrix)
+
+# Compute accuracy
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", round(accuracy, 3)))
+
+```
+
+
+
+see other versions of risk score--add in other variables
+```{r}
+# Compute block-level risk score (sum of standardized variables)
+level_data$Risk_Score <- scale(level_data$Bedrooms) + scale(level_data$Age) + scale(level_data$Land.Square.Feet)  + scale(level_data$tract_white_perc) + 
+                               scale(level_data$Prior.Tax.Year.Market.Value.Estimate..Land.) + 
+                               scale(level_data$tract_pop)
+
+# Logistic regression using risk score
+logit_risk <- glm(binary_max ~ Risk_Score, 
+                  family = binomial(link = "logit"), 
+                  data = level_data)
+
+# Summary
+summary(logit_risk)
+
+# View risk scores
+head(level_data[, c("Block_Number", "Risk_Score")])
+
+```
+
+
+
+hiehrcy--this is gonna be long
+```{r}
+library(lme4)
+
+# Run hierarchical logistic regression with block and neighborhood effects
+logit_mixed <- glmer(binary_max ~ Bedrooms + Prior.Tax.Year.Market.Value.Estimate..Land. + 
+                     Land.Square.Feet + tract_pop + (1 | Neighborhood), 
+                     family = binomial(link = "logit"), 
+                     data = finalidk)
+
+# Model summary
+summary(logit_mixed)
+
+```
+
+not need now
+```{r}
+library(ggplot2)
+
+# Predict probabilities from logistic regression
+finalidk$Predicted_Prob <- predict(block_model, newdata = finalidk, type = "response")
+
+# Plot using ggplot (assuming you have latitude/longitude per block)
+ggplot(finalidk, aes(x = Longitude, y = Latitude)) +
+  geom_point(aes(color = Predicted_Prob), size = 3) +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Predicted Probability of binary_max per Block", color = "Risk Level") +
+  theme_minimal()
+
+```
+
+not need run again
+```{r}
+# Select numeric variables for clustering
+block_data <- finalidk[, c("Bedrooms", "Prior.Tax.Year.Market.Value.Estimate..Land.", "tract_pop", "Land.Square.Feet")]
+
+# Standardize the variables
+block_data_scaled <- scale(block_data)
+
+# Perform K-means clustering (choose 3 clusters as an example)
+set.seed(123)
+kmeans_result <- kmeans(block_data_scaled, centers = 3)
+
+# Add cluster labels to dataset
+finalidk$Block_Cluster <- kmeans_result$cluster
+
+# Run logistic regression within each cluster
+library(dplyr)  # Replace with base R if necessary
+cluster_models <- lapply(unique(finalidk$Block_Cluster), function(cluster) {
+  subset_data <- finalidk[finalidk$Block_Cluster == cluster, ]
+  glm(binary_max ~ Bedrooms + Prior.Tax.Year.Market.Value.Estimate..Land. + tract_pop, 
+      family = binomial(link = "logit"), 
+      data = subset_data)
+})
+
+# View model summaries for each cluster
+lapply(cluster_models, summary)
+
+```
+
+
+not working
+```{r}
+library(brms)
+
+# Fit Bayesian logistic regression
+logit_bayes <- brm(binary_max ~ Bedrooms + tract_pop , 
+                   family = bernoulli(), 
+                   data = finalidk, 
+                   iter = 2000, warmup = 1000, chains = 4, cores = 2)
+
+# Model summary
+summary(logit_bayes)
+
+```
+
+
+do all regressions again with new aggergated. see the top all_models
+do ml again too.
+
+```{r}
+
+variables <- c("Age",   "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit3 <- list()
+aic_values4 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("level_data$binary_max ~", paste(paste0("level_data$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit3[[formula_str]] <- summary(model)
+    aic_values4[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values4 <- sort(aic_values4)
+
+# Get the top 25 models with the lowest AICs
+top_25_models4 <- all_models_logit3[names(sorted_aic_values4[1:25])]
+
+# Print the top 25 AICs with their formulas
+
+```
+
+
+key to analysis!
+```{r}
+library(nnet)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_multi3 <- list()
+aic_values5 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("level_data$class_max ~", paste(paste0("level_data$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_multi3[[formula_str]] <- summary(model)
+    aic_values5[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values5 <- sort(aic_values5)
+
+# Get the top 25 models with the lowest AICs
+top_25_models5 <- all_models_multi3[names(sorted_aic_values1[1:25])]
+
+```
+
+
+```{r}
+model$fitted.values
+```
+
+
+
+```{r}
+length(unique(finalidk$township_name))
+```
+
+with elem schools
+
+```{r}
+
+
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list(Address = finalidk$Address, school=finalidk$school_elem_district), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list(Address = finalidk$Address, school=finalidk$school_elem_district), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+schoollevel_data <- merge(numeric_agg, categorical_agg, by = "Address")
+
+# View aggregated data
+head(schoollevel_data)
+
+```
+
+
+
+
+```{r}
+schoollevel_data$binary_max <- ifelse(schoollevel_data$Max < 10, 0, 1)
+schoollevel_data$class_max <- cut(schoollevel_data$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+
+```{r}
+
+variables <- c("Age",   "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit3 <- list()
+aic_values4 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("schoollevel_data$binary_max ~", paste(paste0("schoollevel_data$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit3[[formula_str]] <- summary(model)
+    aic_values4[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values4 <- sort(aic_values4)
+
+# Get the top 25 models with the lowest AICs
+top_25_models4 <- all_models_logit3[names(sorted_aic_values4[1:25])]
+
+# Print the top 25 AICs with their formulas
+```
+
+
+
+
+
+key to analysis!
+
+
+```{r}
+
+library(nnet)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_multi3 <- list()
+aic_values5 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("schoollevel_data$class_max ~", paste(paste0("schoollevel_data$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_multi3[[formula_str]] <- summary(model)
+    aic_values5[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values5 <- sort(aic_values5)
+
+# Get the top 25 models with the lowest AICs
+top_25_models5 <- all_models_multi3[names(sorted_aic_values1[1:25])]
+
+
+```
+
+
+
+```{r}
+schoollevel_data$Risk_Score <- scale(schoollevel_data$Bedrooms) + scale(schoollevel_data$Age) + scale(schoollevel_data$Land.Square.Feet) + 
+                               scale(schoollevel_data$tract_white_perc) + 
+                               scale(schoollevel_data$Prior.Tax.Year.Market.Value.Estimate..Land.) + 
+                               scale(schoollevel_data$tract_pop)
+
+# Logistic regression using risk score
+logit_risk <- glm(binary_max ~ Risk_Score, 
+                  family = binomial(link = "logit"), 
+                  data = schoollevel_data)
+
+
+# Summary
+summary(logit_risk)
+
+# View risk scores
+head(ziplevel_data[, c("Block_Number", "Risk_Score")])
+
+```
+
+
+by zipcode
+
+```{r}
+
+
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age", "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list(Address = finalidk$Address, zip=finalidk$property_zip), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list(Address = finalidk$Address, zip=finalidk$property_zip), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+ziplevel_data <- merge(numeric_agg, categorical_agg, by = "Address")
+
+# View aggregated data
+head(ziplevel_data)
+```
+
+
+
+
+```{r}
+ziplevel_data$binary_max <- ifelse(ziplevel_data$Max < 10, 0, 1)
+ziplevel_data$class_max <- cut(ziplevel_data$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+```{r}
+
+variables <- c("Age",   "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit3 <- list()
+aic_values4 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("ziplevel_data$binary_max ~", paste(paste0("ziplevel_data$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit3[[formula_str]] <- summary(model)
+    aic_values4[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values4 <- sort(aic_values4)
+
+# Get the top 25 models with the lowest AICs
+top_25_models4 <- all_models_logit3[names(sorted_aic_values4[1:25])]
+
+# Print the top 25 AICs with their formulas
+```
+
+
+
+
+
+key to analysis!
+
+
+```{r}
+
+library(nnet)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_multi3 <- list()
+aic_values5 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("ziplevel_data$class_max ~", paste(paste0("ziplevel_data$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_multi3[[formula_str]] <- summary(model)
+    aic_values5[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values5 <- sort(aic_values5)
+
+# Get the top 25 models with the lowest AICs
+top_25_models5 <- all_models_multi3[names(sorted_aic_values1[1:25])]
+
+
+```
+
+
+
+
+see other versions of risk score--add in other variables
+```{r}
+# Compute block-level risk score (sum of standardized variables)
+ziplevel_data$Risk_Score <- scale(ziplevel_data$Bedrooms) + scale(ziplevel_data$Age) + scale(ziplevel_data$Land.Square.Feet) + 
+                            scale(ziplevel_data$tract_white_perc) + 
+                            scale(ziplevel_data$Prior.Tax.Year.Market.Value.Estimate..Land.) + 
+                            scale(ziplevel_data$tract_pop)
+
+# Logistic regression using risk score
+logit_risk <- glm(binary_max ~ Risk_Score, 
+                  family = binomial(link = "logit"), 
+                  data = ziplevel_data)
+
+# Summary
+summary(logit_risk)
+
+# View risk scores
+head(ziplevel_data[, c("Block_Number", "Risk_Score")])
+
+```
+
+
+
+by ward!! final
+
+```{r}
+
+
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list(Address = finalidk$Address, ward=finalidk$ward), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list(Address = finalidk$Address, ward=finalidk$ward), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+wardlevel_data <- merge(numeric_agg, categorical_agg, by = "Address")
+
+# View aggregated data
+head(wardlevel_data)
+```
+
+
+```{r}
+wardlevel_data$binary_max <- ifelse(wardlevel_data$Max < 10, 0, 1)
+wardlevel_data$class_max <- cut(wardlevel_data$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+
+```{r}
+wardlevel_data <- wardlevel_data %>%
+  rename(ward = ward.x)
+```
+
+
+```{r}
+# Merge 90th percentile data with wardlevel_data
+wardlevel_data <- merge(wardlevel_data, percentile_90, by = c("Address", "ward"), all.x = TRUE)
+
+# View the updated dataset
+head(wardlevel_data)
+
+```
+
+```{r}
+wardlevel_data$binnin <- ifelse(wardlevel_data$Max_90th < 10, 0, 1)
+wardlevel_data$classnin <- cut(wardlevel_data$Max_90th, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+```
+
+
+
+```{r}
+
+variables <- c("Age", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit3 <- list()
+aic_values4 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("wardlevel_data$binary_max ~", paste(paste0("wardlevel_data$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit3[[formula_str]] <- summary(model)
+    aic_values4[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values4 <- sort(aic_values4)
+
+# Get the top 25 models with the lowest AICs
+top_25_models4 <- all_models_logit3[names(sorted_aic_values4[1:25])]
+
+# Print the top 25 AICs with their formulas
+```
+
+
+
+
+
+key to analysis!
+
+
+```{r}
+
+library(nnet)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_multi3 <- list()
+aic_values5 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("wardlevel_data$class_max ~", paste(paste0("wardlevel_data$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_multi3[[formula_str]] <- summary(model)
+    aic_values5[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values5 <- sort(aic_values5)
+
+# Get the top 25 models with the lowest AICs
+top_25_models5 <- all_models_multi3[names(sorted_aic_values1[1:25])]
+
+
+```
+
+
+
+
+see other versions of risk score--add in other variables
+```{r}
+# Compute block-level risk score (sum of standardized variables)
+wardlevel_data$Risk_Score <- scale(wardlevel_data$Bedrooms) + scale(wardlevel_data$Age) + scale(wardlevel_data$Land.Square.Feet) + 
+                              scale(wardlevel_data$tract_white_perc) + 
+                             scale(wardlevel_data$Prior.Tax.Year.Market.Value.Estimate..Land.) + 
+                             scale(wardlevel_data$tract_pop)
+
+# Logistic regression using risk score
+logit_risk <- glm(binary_max ~ Risk_Score, 
+                  family = binomial(link = "logit"), 
+                  data = wardlevel_data)
+
+
+# Summary
+summary(logit_risk)
+
+# View risk scores
+head(ziplevel_data[, c("Block_Number", "Risk_Score")])
+
+```
+
+
+
+
+no need for these below:
+
+look at basic summary stats with them
+
+```{r}
+
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list( ward=finalidk$township_name), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list( ward=finalidk$township_name), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+townlevel_data2 <- merge(numeric_agg, categorical_agg, by = "ward")
+
+# View aggregated data
+head(wardlevel_data2)
+```
+
+
+```{r}
+
+townlevel_data2$binary_max <- ifelse(townlevel_data2$Max < 10, 0, 1)
+townlevel_data2$class_max <- cut(townlevel_data2$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+
+
+```{r}
+
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age", "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list( ward=finalidk$ward), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list( ward=finalidk$ward), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+wardlevel_data2 <- merge(numeric_agg, categorical_agg, by = "ward")
+
+# View aggregated data
+head(wardlevel_data2)
+```
+
+
+```{r}
+
+wardlevel_data2$binary_max <- ifelse(wardlevel_data2$Max < 10, 0, 1)
+wardlevel_data2$class_max <- cut(wardlevel_data2$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+
+
+```{r}
+
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list( ward=finalidk$property_zip), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list( ward=finalidk$property_zip), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+ziplevel_data2 <- merge(numeric_agg, categorical_agg, by = "ward")
+
+# View aggregated data
+head(wardlevel_data2)
+```
+
+
+```{r}
+
+ziplevel_data2$binary_max <- ifelse(ziplevel_data2$Max < 10, 0, 1)
+ziplevel_data2$class_max <- cut(ziplevel_data2$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+
+
+```{r}
+
+# Define numeric and categorical variables separately
+numeric_vars <- c("Age",  "Bedrooms", "tract_white_perc", 
+                  "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Rooms", "tract_pop", "Max")
+
+categorical_vars <- c("Wall.Material", "Roof.Material", "Basement", "Construction.Quality", 
+                      "Porch", "Garage.indicator", "Use",  "Near.Major.Road", "binary_max", "class_max")
+
+# Function to get the mode (most common value)
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Aggregate numeric variables by block (mean)
+numeric_agg <- aggregate(finalidk[numeric_vars], by = list( ward=finalidk$school_elem_district), FUN = mean, na.rm = TRUE)
+
+# Aggregate categorical variables by block (mode)
+categorical_agg <- aggregate(finalidk[categorical_vars], by = list( ward=finalidk$school_elem_district), FUN = get_mode)
+
+# Merge numeric and categorical aggregations
+schoollevel_data2 <- merge(numeric_agg, categorical_agg, by = "ward")
+
+# View aggregated data
+head(wardlevel_data2)
+```
+
+
+```{r}
+
+schoollevel_data2$binary_max <- ifelse(schoollevel_data2$Max < 10, 0, 1)
+schoollevel_data2$class_max <- cut(schoollevel_data2$Max, 
+                           breaks = c(0, 5, 10, 15, Inf), 
+                           labels = c("0ppb-5ppb", "5ppb-10ppb", "10ppb-15ppb", "15ppb+"), 
+                           right = FALSE)  # Excludes upper bound in each range
+
+```
+
+
+
+```{r}
+summary(schoollevel_data2[, c("binary_max", "class_max", "Max")])
+table(schoollevel_data2$binary_max)
+mean(schoollevel_data2$class_max, na.rm = TRUE)
+median(schoollevel_data2$class_max, na.rm = TRUE)
+min(schoollevel_data2$class_max, na.rm = TRUE)
+max(schoollevel_data2$class_max, na.rm = TRUE)
+quantile(schoollevel_data2$Max, 0.90, na.rm = TRUE)
+sd(schoollevel_data2$class_max, na.rm = TRUE)
+var(schoollevel_data2$class_max, na.rm = TRUE)
+
+```
+
+
+
+summary stats
+```{r}
+wardlevel_data$binary_max=as.character(wardlevel_data$binary_max)
+summary(finalidk[, c("binary_max", "class_max", "Max")])
+table(wardlevel_data$binary_max)
+table(finalidk$class_max)
+
+quantile(wardlevel_data$Max, 0.90, na.rm = TRUE)
+
+
+```
+no
+
+```{r}
+
+ziplevel_data$binary_max=as.character(ziplevel_data$binary_max)
+summary(ziplevel_data[, c("binary_max", "class_max", "Max")])
+table(ziplevel_data$binary_max)
+table(ziplevel_data$class_max)
+
+quantile(ziplevel_data$Max, 0.90, na.rm = TRUE)
+
+```
+
+
+```{r}
+
+
+block_level_data$binary_max=as.character(block_level_data$binary_max)
+summary(block_level_data[, c("binary_max", "class_max", "Max")])
+table(block_level_data$binary_max)
+table(block_level_data$class_max)
+
+quantile(block_level_data$Max, 0.90, na.rm = TRUE)
+
+```
+
+use colorful
+bedrooms by final idk
+```{r}
+ggplot(finalidk, aes(x = factor(ceiling(Bedrooms)), fill = factor(class_max))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Class Max by Number of Bedrooms", x = "Number of Bedrooms", y = "Proportion of Class Max") +
+  theme_minimal()
+# Calculate the proportion of each class_max
+class_max_proportions <- ziplevel_data %>%
+  group_by(class_max) %>%
+  summarise(count = n()) %>%
+  mutate(proportion = count / sum(count))
+
+# Plot the proportions as a bar plot
+ggplot(class_max_proportions, aes(x = class_max, y = proportion, fill = class_max)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +  # Display as percentage
+  labs(title = "Proportion of Each Class Max", 
+       x = "Class Max", 
+       y = "Proportion") +
+  theme_minimal()
+
+class_max_proportions
+
+
+
+```
+use
+al facet wraps by block
+```{r}
+ggplot(block_level_data, aes(x = Age, y = Max)) +
+  geom_point() +
+  facet_wrap(~ class_max) +
+  labs(title = "Scatter Plot of Age vs Class Max", x = "Age", y = "Class Max") +
+  ylim(0, 15) +
+  xlim(0, 150) +
+  theme_minimal()
+
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)  # For filtering
+
+# Convert ward to numeric (if not already)
+finalidk$ward <- as.character(finalidk$ward)
+
+# Exclude the first class
+filtered_data <- finalidk %>% filter(class_max != levels(class_max)[1])
+
+# Create histogram for Age grouped by class_max (excluding first class)
+ggplot(filtered_data, aes(x = ward, fill = class_max)) +
+  geom_histogram(binwidth = 1, position = "dodge", alpha = 0.7) + 
+  labs(title = "Histogram of Ward Grouped by Class Category",
+       x = "Ward",
+       y = "Frequency") +
+  theme_minimal() +
+  xlim(0, 50)
+
+ 
+```
+
+
+
+```{r}
+ggplot(subset(block_level_data, Max >= 10)
+, aes(x = Age, y = Max)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Age for 10ppb+", 
+       x = "Age", y = " Max") +
+  ylim(0, 200) +
+  xlim(0, 150) +
+  theme_minimal()
+
+```
+
+
+```{r}
+ggplot(subset(block_level_data, Max < 10), aes(x = Age, y = Max)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Age for 10ppb-15ppb", 
+       x = "Age", y = " Max") +
+  ylim(0, 20) +
+  xlim(0, 150) +
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(subset(block_level_data, Max >= 10), aes(x = Land.Square.Feet, y = Max)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Land Sq Ft for 10ppb+", 
+       x = "Land Sq Ft", y = " Max") +
+  ylim(0, 200) +
+  xlim(0, 15000) +
+  theme_minimal()
+
+```
+
+
+```{r}
+ggplot(subset(block_level_data, class_max == "10ppb-15ppb"), aes(x = Land.Square.Feet, y = Max)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Land Sq Ft for 10ppb-15ppb", 
+       x = "Land Sq Ft", y = " Max") +
+  ylim(0, 20) +
+  xlim(0, 15000) +
+  theme_minimal()
+```
+
+
+
+```{r}
+ggplot(subset(block_level_data, class_max == "15ppb+"), aes(x = Prior.Tax.Year.Market.Value.Estimate..Land., y = Max)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Land Value for 15ppb+", 
+       x = "Land Value", y = " Max") +
+  ylim(0, 200) +
+  xlim(0, 150000) +
+  theme_minimal()
+
+```
+
+
+```{r}
+ggplot(subset(block_level_data, Max >= 10)
+, aes(x = tract_white_perc, Max)) +
+  geom_point() +
+  labs(title = "Scatter Plot of White Percent for 10ppb+", 
+       x = "White Percent", y = " Max") +
+  ylim(0, 200) +
+  xlim(0, 1) +
+  theme_minimal()
+```
+
+
+not gonna use
+```{r}
+ggplot(ziplevel_data, aes(x = Prior.Tax.Year.Market.Value.Estimate..Land., y = Max)) +
+  geom_point(color = "blue", alpha = 0.7) +
+  labs(title = "Scatter Plot of Lead Concentration vs Land Vlaue",
+       x = "Land Value", 
+       y = "Lead Concentration (Max)") +
+  ylim(0, 200) +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(block_level_data, aes(x = Land.Square.Feet, y = Max)) +
+  geom_point(alpha = 0.7, color = "blue") +
+  facet_wrap(~ class_max) +  # Facet by binary_max or any other variable
+  labs(title = "Scatter Plot of Lead Concentration vs Land Square Feet by Class",
+       x = "Land Square Feet",
+       y = "Lead Concentration (Max)") +
+    ylim(0, 12) +
+  xlim(0, 20000) +
+  theme_minimal()
+
+```
+
+
+```{r}
+ggplot(block_level_data, aes(x = Prior.Tax.Year.Market.Value.Estimate..Land., y = Max)) +
+  geom_point(alpha = 0.7, color = "blue") +
+  facet_wrap(~ class_max) +  # Facet by binary_max or any other variable
+  labs(title = "Scatter Plot of Lead Concentration vs Land Value by Class ",
+       x = "Land Value",
+       y = "Lead Concentration (Max)") +
+    ylim(0, 12) +
+  xlim(0, 100000) +
+  theme_minimal()
+```
+
+
+```{r}
+# Descriptive statistics for 'Max' (assuming it's the lead concentration)
+summary(block_level_data$Max)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+mean(block_level_data$Max, na.rm = TRUE)  # Mean
+median(block_level_data$Max, na.rm = TRUE)  # Median
+sd(block_level_data$Max, na.rm = TRUE)  # Standard Deviation
+range(block_level_data$Max, na.rm = TRUE)  # Range (min, max)
+quantile(block_level_data$Max, c(0.25, 0.5, 0.75), na.rm = TRUE)  # Quantiles (25%, 50%, 75%)
+IQR(block_level_data$Max, na.rm = TRUE)  # Interquartile Range (IQR)
+table(block_level_data$binary_max)  # Frequency count for 'binary_max'
+table(block_level_data$class_max)  # Frequency count for 'class_max'
+
+library(ggplot2)
+ggplot(block_level_data, aes(x = Max)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 200) +  # Limit x-axis to range 0-1000
+  labs(title = "Histogram of Lead in Water (Max)", x = "Lead Concentration (Max)", y = "Frequency") +
+  theme_minimal()
+
+ggplot(block_level_data, aes(y = Max)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 200) +  # Limit x-axis to range 0-1000
+  labs(title = "Boxplot of Lead in Water (Max)", y = "Lead Concentration (Max)") +
+  theme_minimal()
+ggplot(block_level_data, aes(x = binary_max)) +
+  geom_bar(fill = "coral", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Binary Max", x = "Binary Max", y = "Count") +
+  theme_minimal()
+ggplot(block_level_data, aes(x = class_max)) +
+  geom_bar(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Class Max", x = "Class Max", y = "Count") +
+  theme_minimal()
+ggplot(block_level_data, aes(x = Bedrooms)) +
+  geom_bar(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Class Max", x = "Class Max", y = "Count") +
+  theme_minimal()
+ggplot(block_level_data, aes(x = Age)) +
+  geom_bar(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Class Max", x = "Class Max", y = "Count") +
+  theme_minimal()
+```
+
+class, binary, max
+age, bedrooms?, (land sq ft anf prop value)
+
+ward histo
+
+```{r}
+# Descriptive statistics for 'Max' (assuming it's the lead concentration)
+summary(ziplevel_data$Max)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+mean(ziplevel_data$Max, na.rm = TRUE)  # Mean
+median(ziplevel_data$Max, na.rm = TRUE)  # Median
+sd(ziplevel_data$Max, na.rm = TRUE)  # Standard Deviation
+range(ziplevel_data$Max, na.rm = TRUE)  # Range (min, max)
+quantile(ziplevel_data$Max, c(0.25, 0.5, 0.75), na.rm = TRUE)  # Quantiles (25%, 50%, 75%)
+IQR(ziplevel_data$Max, na.rm = TRUE)  # Interquartile Range (IQR)
+table(ziplevel_data$binary_max)  # Frequency count for 'binary_max'
+table(ziplevel_data$class_max)  # Frequency count for 'class_max'
+
+# Visualizations
+library(ggplot2)
+
+ggplot(ziplevel_data, aes(x = Garage.indicator, y = Max)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 100) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of Lead in Water (Max)", y = "Lead Concentration (Max)") +
+  theme_minimal()
+
+
+# Histogram for 'Max'
+ggplot(wardlevel_data, aes(x = Max)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 200) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Lead in Water (Max)", x = "Lead Concentration (Max)", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot for 'Max'
+ggplot(ziplevel_data, aes(y = Max)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 200) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of Lead in Water (Max)", y = "Lead Concentration (Max)") +
+  theme_minimal()
+
+# Bar Plot for 'binary_max'
+ggplot(wardlevel_data, aes(x = binary_max)) +
+  geom_bar(fill = "coral", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Binary Max", x = "Binary Max", y = "Count") +
+  theme_minimal()
+
+# Bar Plot for 'class_max'
+ggplot(ziplevel_data, aes(x = class_max)) +
+  geom_bar(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Class Max", x = "Class Max", y = "Count") +
+  theme_minimal()
+
+# Histogram for 'Max'
+ggplot(wardlevel_data, aes(x = Age)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 200) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Age", x = "Age", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot for 'Max'
+ggplot(ziplevel_data, aes(y = Age)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 200) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of Age", y = "Lead Concentration (Max)") +
+  theme_minimal()
+
+# Histogram for 'Max'
+ggplot(wardlevel_data, aes(x = Bedrooms)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 20) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Bedrooms", x = "Bedrooms", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot for 'Max'
+ggplot(ziplevel_data, aes(y = Bedrooms)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 20) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of bedrooms", y = "Lead Concentration (Max)") +
+  theme_minimal()
+
+# Histogram for 'Max'
+ggplot(wardlevel_data, aes(x = Land.Square.Feet)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 20000) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Land Sq Ft", x = "Land Sq Ft", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot for 'Max'
+ggplot(ziplevel_data, aes(y = Land.Square.Feet)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 20000) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of land sq ft", y = "Lead Concentration (Max)") +
+  theme_minimal()
+
+# Histogram for 'Max'
+ggplot(wardlevel_data, aes(x = Prior.Tax.Year.Market.Value.Estimate..Land.)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 200000) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Property Value", x = "Value", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot for 'Max'
+ggplot(ziplevel_data, aes(y = Prior.Tax.Year.Market.Value.Estimate..Land.)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 20000) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of prop value", y = "Lead Concentration (Max)") +
+  theme_minimal()
+```
+
+summary stats
+
+```{r}
+# Descriptive statistics for 'Max' (assuming it's the lead concentration)
+summary(wardlevel_data$Max)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+mean(wardlevel_data$Max, na.rm = TRUE)  # Mean
+median(wardlevel_data$Max, na.rm = TRUE)  # Median
+sd(wardlevel_data$Max, na.rm = TRUE)  # Standard Deviation
+range(wardlevel_data$Max, na.rm = TRUE)  # Range (min, max)
+quantile(wardlevel_data$Max, c(0.25, 0.5, 0.75), na.rm = TRUE)  # Quantiles (25%, 50%, 75%)
+IQR(wardlevel_data$Max, na.rm = TRUE)  # Interquartile Range (IQR)
+table(wardlevel_data$binary_max)  # Frequency count for 'binary_max'
+table(wardlevel_data$class_max)  # Frequency count for 'class_max'
+
+# Visualizations
+library(ggplot2)
+
+# Histogram for 'Max'
+ggplot(wardlevel_data, aes(x = Max)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 200) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Lead in Water (Max)", x = "Lead Concentration (Max)", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot for 'Max'
+ggplot(wardlevel_data, aes(y = Max)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 200) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of Lead in Water (Max)", y = "Lead Concentration (Max)") +
+  theme_minimal()
+
+# Bar Plot for 'binary_max'
+ggplot(wardlevel_data, aes(x = binary_max)) +
+  geom_bar(fill = "coral", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Binary Max", x = "Binary Max", y = "Count") +
+  theme_minimal()
+
+# Bar Plot for 'class_max'
+ggplot(wardlevel_data, aes(x = class_max)) +
+  geom_bar(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Class Max", x = "Class Max", y = "Count") +
+  theme_minimal()
+
+
+g=summary(wardlevel_data$Age)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+h=summary(wardlevel_data$Land.Square.Feet)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+j=summary(wardlevel_data$Bedrooms)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+k=summary(wardlevel_data$Prior.Tax.Year.Market.Value.Estimate..Land.)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+g
+h
+j
+k
+```
+
+
+
+```{r}
+# Descriptive statistics for 'Max' (assuming it's the lead concentration)
+summary(finalidk$Max)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+mean(finalidk$Max, na.rm = TRUE)  # Mean
+median(finalidk$Max, na.rm = TRUE)  # Median
+sd(finalidk$Max, na.rm = TRUE)  # Standard Deviation
+range(finalidk$Max, na.rm = TRUE)  # Range (min, max)
+quantile(finalidk$Max, c(0.25, 0.5, 0.75), na.rm = TRUE)  # Quantiles (25%, 50%, 75%)
+IQR(finalidk$Max, na.rm = TRUE)  # Interquartile Range (IQR)
+table(finalidk$binary_max)  # Frequency count for 'binary_max'
+table(finalidk$class_max)  # Frequency count for 'class_max'
+g=summary(finalidk$Age)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+h=summary(finalidk$Land.Square.Feet)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+j=summary(finalidk$Bedrooms)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+k=summary(finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+g
+h
+j
+k
+# Visualizations
+library(ggplot2)
+
+# Histogram for 'Max'
+ggplot(finalidk, aes(x = Max)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 200) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Lead in Water (Max)", x = "Lead Concentration (Max)", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot for 'Max'
+ggplot(finalidk, aes(y = Max)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  ylim(0, 200) +  # Limit y-axis to range 0-200
+  labs(title = "Boxplot of Lead in Water (Max)", y = "Lead Concentration (Max)") +
+  theme_minimal()
+
+# Bar Plot for 'binary_max'
+ggplot(finalidk, aes(x = binary_max)) +
+  geom_bar(fill = "coral", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Binary Max", x = "Binary Max", y = "Count") +
+  theme_minimal()
+
+# Bar Plot for 'class_max'
+ggplot(finalidk, aes(x = class_max)) +
+  geom_bar(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Bar Plot of Class Max", x = "Class Max", y = "Count") +
+  theme_minimal()
+
+```
+
+```{r}
+"90th Percentile Lead Draw"
+quantile(block_level_data$Max, 0.90, na.rm = TRUE)
+```
+
+
+```{r}
+"Age"
+g=summary(block_level_data$Age)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+"Land Sq Ft"
+h=summary(block_level_data$Land.Square.Feet)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+j=summary(block_level_data$Bedrooms)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+k=summary(block_level_data$Prior.Tax.Year.Market.Value.Estimate..Land.)  # Provides min, 1st quartile, median, mean, 3rd quartile, max
+"Age"
+g
+"Land Sq Ft"
+h
+"Bedrooms"
+j
+"Land Value"
+k
+```
+
+
+
+```{r}
+# Violin plot for 'Max' without grouping
+ggplot(finalidk, aes(x = "", y = Max)) +
+  geom_violin(fill = "lightblue", color = "darkblue") +
+  labs(title = "Violin Plot of Lead in Water (Max)", x = "", y = "Lead Concentration (Max)") +
+  ylim(0, 80) +
+  theme_minimal()
+
+```
+
+
+interactions
+
+Tax.Rate:wardlevel_data$tract_white_perc
+Bedrooms:wardlevel_data$Prior.Tax.Year.Market.Value.Estimate..Land.
+
+```{r}
+
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit9 <- list()
+aic_values9 <- numeric()
+
+for (i in 1:2) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("wardlevel_data$binary_max ~", paste(paste0("wardlevel_data$`", subset, "`"), collapse = " * "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit9[[formula_str]] <- summary(model)
+    aic_values9[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values9 <- sort(aic_values9)
+
+# Get the top 25 models with the lowest AICs
+top_25_models9 <- all_models_logit9[names(sorted_aic_values9[1:25])]
+
+# Print the top 25 AICs with their formulas
+```
+
+
+best!!!-- wards with age and bedrooms
+
+```{r}
+
+ model=glm(finalidk$binary_max~finalidk$Age*finalidk$ward, family=binomial(link = "logit"))
+summary(model)
+```
+
+
+
+
+```{r}
+model=glm(finalidk$binary_max~finalidk$ward, family=binomial(link = "logit"))
+summary(model)
+```
+
+
+```{r}
+
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "ward", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit8 <- list()
+aic_values8 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit8[[formula_str]] <- summary(model)
+    aic_values8[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values8 <- sort(aic_values8)
+
+# Get the top 25 models with the lowest AICs
+top_25_models8 <- all_models_logit8[names(sorted_aic_values8[1:25])]
+
+# Print the top 25 AICs with their formulas
+```
+
+
+
+interactions with wards-- best with ages and bedrooms and landsq feet
+
+
+```{r}
+
+ model=glm(finalidk$binary_max~finalidk$ward, family=binomial(link = "logit"))
+summary(model)
+```
+
+
+
+```{r}
+
+ model=glm(finalidk$binary_max~finalidk$Land.Square.Feet*finalidk$ward, family=binomial(link = "logit"))
+summary(model)
+```
+
+
+
+```{r}
+
+ model=glm(finalidk$binary_max~finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.*finalidk$ward, family=binomial(link = "logit"))
+summary(model)
+```
+
+```{r}
+
+ model=glm(finalidk$binary_max~finalidk$Age*finalidk$ward, family=binomial(link = "logit"))
+summary(model)
+```
+
+
+```{r}
+
+ model=glm(finalidk$binary_max~finalidk$ward, family=binomial(link = "logit"))
+summary(model)
+```
+
+
+
+```{r}
+library(lme4)
+finalidk$Scaled_Bedrooms <- scale(finalidk$Bedrooms)
+finalidk$Scaled_LandValue <- scale(finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.)
+finalidk$Scaled_LandSize <- scale(finalidk$Land.Square.Feet)
+finalidk$Scaled_TractPop <- scale(finalidk$tract_pop)
+logit_mixed <- glmer(binary_max ~ Scaled_Bedrooms + Scaled_LandValue + 
+                      Scaled_LandSize + Scaled_TractPop + (Age | ward), 
+                      family = binomial(link = "logit"), 
+                      data = finalidk)
+summary(logit_mixed)
+
+```
+
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~finalidk$property_zip, 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+
+"Age",  "Bedrooms",  "tract_white_perc", "tract_pop",   "Garage.indicator",  "Near.Major.Road"
+
+other vars: "Wall.Material", "Roof.Material", "Basement", "Construction.Quality", "Porch", "Garage.indicator","Use", "Rooms", "tract_pop", "median income", "tax rate"
+
+
+
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "tract_pop", "Wall.Material", "Roof.Material", "Basement",  "Porch", "Garage.indicator", "Land.Square.Feet", "Near.Major.Road", "Prior.Tax.Year.Market.Value.Estimate..Land.")
+```{r}
+finalidk$Basement = as.character(finalidk$Basement)
+library(MASS)
+# Example dataset: finalidk
+# Assuming `lead_risk` is an ordered factor (Low, Medium, High) and `Bedrooms`, `ward10` are predictors
+
+finalidk$lead_risk <- factor(finalidk$class_max, ordered = TRUE)  # Ensure it's an ordinal factor
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward  + finalidk$`Near.Major.Road`, 
+                      method = "logistic")
+
+summary(ordinal_model)
+
+```
+
+exact same bests with multinom!! expect interaction lowers aic
+and same with class not just class_max
+
+
+best one!! no interactions with std
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward  + finalidk$`Near.Major.Road`, 
+                      method = "logistic")
+
+
+
+
+
+best one! no interactions. no std
+
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward  + finalidk$`Near.Major.Road`+finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+finalidk$Land.Square.Feet, 
+                      method = "logistic")
+
+
+
+
+
+best one! interactions! with std
+
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Bedrooms` + finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward * finalidk$Age  + finalidk$`Near.Major.Road`, 
+                      method = "logistic")
+
+
+
+
+best one! interactions! no std!
+
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Bedrooms` + finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward * finalidk$Age  + finalidk$`Near.Major.Road`+finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+finalidk$Land.Square.Feet, 
+                      method = "logistic")
+
+
+
+
+do run
+
+, "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road"'
+
+best interactions: age bedrooms --all var
+age white perc -- all var
+bedrooms whit perc --just with ward (and age veryyyy good)
+bed ward-- whit perc
+age ward -- bedrooms
+
+orginal best!!
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward  + finalidk$`Near.Major.Road`, 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+
+best!! with interaction
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Bedrooms` + finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward * finalidk$Age  + finalidk$`Near.Major.Road`, 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+
+
+
+
+with land sq ft slight worse
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward  + finalidk$`Near.Major.Road`+finalidk$Land.Square.Feet, 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+
+not as good slight worse
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` * finalidk$ward + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+ finalidk$`Near.Major.Road`+finalidk$Land.Square.Feet, 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+
+
+with prior prop val
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward  + finalidk$`Near.Major.Road`+finalidk$Prior.Tax.Year.Market.Value.Estimate..Land., 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+
+
+with prior prop val and land sq -- better orginial
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward  + finalidk$`Near.Major.Road`+finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+finalidk$Land.Square.Feet, 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+best!! better than interaction
+
+with prior prop val and land sq and intersaction
+best but cant have std!! 
+even just prop val with interaction better
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~ finalidk$ward * finalidk$`Age` + finalidk$`Bedrooms` + finalidk$`tract_pop` + finalidk$tract_white_perc + finalidk$Wall.Material+finalidk$Roof.Material+ finalidk$`Near.Major.Road`+finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+finalidk$Land.Square.Feet, 
+                      method = "logistic")
+
+summary(ordinal_model)
+```
+
+
+
+```{r}
+library(MASS)
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "ward" )
+
+all_models_logit81 <- list()
+aic_values81 <- numeric()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$class_max ~", paste("finalidk$`Age` * finalidk$`ward` +", 
+                  paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- polr(as.formula(formula_str), method = "logistic")
+    all_models_logit81[[formula_str]] <- summary(model)
+    aic_values81[formula_str] <- AIC(model)
+  }
+}
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values81 <- sort(aic_values81)
+
+# Get the top 25 models with the lowest AICs
+top_25_models81 <- all_models_logit81[names(sorted_aic_values81[1:25])]
+
+# Print the top 25 AICs with their formulas
+```
+
+
+do run
+"Land.Square.Feet",
+```{r}
+library(MASS)
+variables <- c("Age",  "Bedrooms",  "tract_white_perc", "tract_pop",   "Garage.indicator",  "Near.Major.Road")
+
+all_models_logit81 <- list()
+aic_values81 <- numeric()
+
+for (i in 2:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$class_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- polr(as.formula(formula_str), method = "logistic")
+    all_models_logit81[[formula_str]] <- summary(model)
+     aic_values81[formula_str] <- AIC(model)
+  }
+}
+
+
+
+# Sort the AIC values to get the models with the lowest AIC
+sorted_aic_values81 <- sort(aic_values81)
+
+# Get the top 25 models with the lowest AICs
+top_25_models81 <- all_models_logit81[names(sorted_aic_values81[1:25])]
+
+
+```
+
+visualizations
+
+
+interactions 
+```{r}
+library(ggplot2)
+
+# Create a data frame with coefficients and confidence intervals
+coef_data <- data.frame(
+  coeff_names = c(
+    "Bedrooms", "White Perct", "Population", "Wall Material: 2", "Wall Material: 3", "Wall Material: 4",
+    "Roof Material: 2", "Roof Material: 3", "Roof Material: 4", "Roof Material: 5", "Roof Material: 6",
+     "Age", "Near Major Road"
+  ),
+  estimates = c(
+    -4.794e-02, 1.597e-01, -1.644e-05, 8.279e-02, 5.199e-02, 2.323e-01, 
+    -2.695e-01, -1.634e-01, 3.200e-02, 6.711e-02, -1.363e-01, 
+     1.854e-03, 
+    -3.238e-01
+  ),
+  std_errors = c(
+    9.254e-03, 9.758e-03, NA, 2.296e-02, 1.961e-02, 8.479e-04, 
+    9.576e-03, 9.383e-05, 2.268e-05, 1.348e-04, 4.030e-04, 
+    
+    1.184e-03, 1.266e-03
+  )
+)
+
+
+
+# Calculate confidence intervals
+coef_data$Lower <- coef_data$estimates - 1.96 * coef_data$std_errors
+coef_data$Upper <- coef_data$estimates + 1.96 * coef_data$std_errors
+
+# Plot using ggplot2
+ggplot(coef_data, aes(x = estimates, y = reorder(coeff_names, estimates))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red")  # Reference line at 0
+
+
+
+```
+
+no interaction
+```{r}
+
+
+# Create updated dataframe with correct coefficients and standard errors
+coef_data <- data.frame(
+  coeff_names = c(
+    "Bedrooms", "White Perct", "Population", "Wall Material: 2", "Wall Material: 3", "Wall Material: 4",
+    "Roof Material: 2", "Roof Material: 3", "Roof Material: 4", "Roof Material: 5", "Roof Material: 6",
+    "Age", "Near Major Road" 
+  ),
+  estimates = c(
+    -5.175e-02, 2.253e-01, -1.922e-05, 1.120e-01, 9.907e-02, 2.034e-01, 
+    -2.849e-01, -1.949e-01, -1.938e-02, 1.703e-02, -1.513e-01, 
+     6.169e-04,  -3.310e-01),
+  std_errors = c(
+    9.701e-03, 5.280e-03, 1.873e-05, 2.559e-02, 1.182e-02, 1.256e-03, 
+    7.046e-03, 8.267e-05, 1.655e-05, 1.241e-04, 9.118e-05, 
+    5.608e-04, 3.296e-0
+  )
+)
+
+
+
+
+
+# Calculate confidence intervals
+coef_data$Lower <- coef_data$estimates - 1.96 * coef_data$std_errors
+coef_data$Upper <- coef_data$estimates + 1.96 * coef_data$std_errors
+
+# Plot using ggplot2
+ggplot(coef_data, aes(x = estimates, y = reorder(coeff_names, estimates))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+ xlim(-1, 1)  # Set x-axis limits
+```
+
+
+
+```{r}
+
+ordinal_model <- multinom(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward * finalidk$Age + finalidk$`Bedrooms` + finalidk$`Near.Major.Road`
+                    )
+library(broom)
+library(dplyr)
+
+# Assuming your model is named "model"
+tidy_model <- tidy(ordinal_model)
+# Rename row names (assuming row names are the predictor variables)
+rownames(tidy_model) <- gsub("finalidk\\$", "", rownames(tidy_model))
+# View the dataframe
+print(tidy_model)
+
+
+```
+
+with interaction multinom
+
+```{r}
+
+# Calculate confidence intervals
+tidy_model$Lower <- tidy_model$estimate - 1.96 * tidy_model$std.error
+tidy_model$Upper <- tidy_model$estimate + 1.96 * tidy_model$std.error
+library(dplyr)
+library(ggplot2)
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(2:11) %>%
+  bind_rows(tidy_model %>% slice(61:63))
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 5-10ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-.6, .5)  # Set x-axis limits
+
+```
+
+```{r}
+
+# Calculate confidence intervals
+tidy_model$Lower <- tidy_model$estimate - 1.96 * tidy_model$std.error
+tidy_model$Upper <- tidy_model$estimate + 1.96 * tidy_model$std.error
+library(dplyr)
+library(ggplot2)
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(114:124) %>%
+  bind_rows(tidy_model %>% slice(173:175))
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 10-15ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, .7)  # Set x-axis limits
+```
+
+```{r}
+
+# Calculate confidence intervals
+tidy_model$Lower <- tidy_model$estimate - 1.96 * tidy_model$std.error
+tidy_model$Upper <- tidy_model$estimate + 1.96 * tidy_model$std.error
+library(dplyr)
+library(ggplot2)
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(226:236) %>%
+  bind_rows(tidy_model %>% slice(285:287))
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 15+ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1.5, .5)  # Set x-axis limits
+```
+
+
+
+```{r}
+
+ordinal_model <- multinom(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward + finalidk$Age + finalidk$`Bedrooms` + finalidk$`Near.Major.Road`
+                    )
+library(broom)
+library(dplyr)
+
+# Assuming your model is named "model"
+tidy_model <- tidy(ordinal_model)
+
+# View the dataframe
+print(tidy_model)
+```
+
+
+```{r}
+tidy_model$Lower <- tidy_model$estimate - 1.96 * tidy_model$std.error
+tidy_model$Upper <- tidy_model$estimate + 1.96 * tidy_model$std.error
+# Rename row names (assuming row names are the predictor variables)
+rownames(tidy_model) <- gsub("finalidk\\$", "", rownames(tidy_model))
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(2:11) %>%
+  bind_rows(tidy_model %>% slice(61:63))
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 5-10ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, 1)  # Set x-axis limits
+
+```
+
+```{r}
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(65:74) %>%
+  bind_rows(tidy_model %>% slice(124:126))
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 10-15ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, 1)  # Set x-axis limits
+```
+
+```{r}
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(128:137) %>%
+  bind_rows(tidy_model %>% slice(187:189))
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 15+ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, 1)  # Set x-axis limits
+```
+
+
+```{r}
+
+ordinal_model <- multinom(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+ finalidk$Age + finalidk$`Bedrooms` + finalidk$`Near.Major.Road`+ finalidk$Land.Square.Feet +finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+ finalidk$ward 
+                    )
+library(broom)
+library(dplyr)
+
+# Assuming your model is named "model"
+tidy_model <- tidy(ordinal_model)
+
+# View the dataframe
+print(tidy_model)
+```
+
+
+
+```{r}
+# Rename row names (assuming row names are the predictor variables)
+rownames(tidy_model) <- gsub("finalidk\\$", "", rownames(tidy_model))
+tidy_model$Lower <- tidy_model$estimate - 1.96 * tidy_model$std.error
+tidy_model$Upper <- tidy_model$estimate + 1.96 * tidy_model$std.error
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(2:16)
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 5-10ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, 1)  # Set x-axis limits
+```
+
+
+```{r}
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(67:81)
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 10-15ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, 1)  # Set x-axis limits
+```
+
+```{r}
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(132:146)
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 15+ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, 1)  # Set x-axis limits
+```
+
+
+```{r}
+
+ordinal_model <- multinom(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+  finalidk$`Bedrooms` + finalidk$`Near.Major.Road`+ finalidk$Land.Square.Feet +finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+ finalidk$Age *finalidk$ward 
+                    )
+library(broom)
+library(dplyr)
+
+# Assuming your model is named "model"
+tidy_model <- tidy(ordinal_model)
+# Rename row names (assuming row names are the predictor variables)
+rownames(tidy_model) <- gsub("finalidk\\$", "", rownames(tidy_model))
+
+
+
+
+# View the dataframe
+print(tidy_model)
+
+tidy_model$Lower <- tidy_model$estimate - 1.96 * tidy_model$std.error
+tidy_model$Upper <- tidy_model$estimate + 1.96 * tidy_model$std.error
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(2:16)
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 5-10ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, .5)  # Set x-axis limits
+```
+
+
+```{r}
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(2:16)
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 5-10ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, .5)  # Set x-axis limits
+```
+
+
+```{r}
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(116:130)
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 10-15ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, .5)  # Set x-axis limits
+```
+
+
+```{r}
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- tidy_model %>%
+  slice(230:244)
+
+# Plot using ggplot2
+ggplot(coef_data_subset, aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "blue", size = 3) +  # Point estimates
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper), height = 0.2, color = "black") +  # CI bars
+  theme_minimal() +
+  labs(title = "Forest Plot of Model Coefficients 15+ppb",
+       x = "Coefficient Estimate",
+       y = "Predictor Variable") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + # Reference line at 0
+  xlim(-1, .5)  # Set x-axis limits
+```
+
+
+
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+  finalidk$`Bedrooms` + finalidk$`Near.Major.Road`+ finalidk$Land.Square.Feet +finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+ finalidk$Age *finalidk$ward , method="logistic"
+                    )
+library(broom)
+library(dplyr)
+
+coef_df=coef(ordinal_model)
+coef_df=as.data.frame(coef_df)
+coef_df$predictor <- rownames(coef_df)  # Convert row names to a column
+colnames(coef_df) <- c("estimate", "predictor")  # Rename columns
+
+
+# Check the result
+head(coef_df)
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- coef_df %>%
+  slice(1:15)
+
+
+ggplot(coef_data_subset, aes(x = reorder(predictor, estimate), y = estimate, fill = estimate > 0)) +
+  geom_bar(stat = "identity", show.legend = FALSE) + 
+  scale_fill_manual(values = c("red", "green")) +  # Red for negative, green for positive
+  theme_minimal() +
+  coord_flip() +  # Flip the axes for easier reading of labels
+  labs(title = "Coefficient Plot: Positive vs Negative Effects",
+       x = "Predictor Variable",
+       y = "Coefficient Estimate")
+
+```
+
+
+```{r}
+ordinal_model <- polr(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+  finalidk$`Bedrooms` + finalidk$`Near.Major.Road`+ finalidk$Land.Square.Feet +finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+ finalidk$Age *finalidk$ward , method="logistic"
+                    )
+
+ordinal_model
+```
+
+
+
+```{r}
+
+ordinal_model <- polr(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+  finalidk$`Bedrooms` + finalidk$`Near.Major.Road`+ finalidk$Land.Square.Feet +finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+ finalidk$Age +finalidk$ward , method="logistic"
+                    )
+library(broom)
+library(dplyr)
+
+coef_df=coef(ordinal_model)
+coef_df=as.data.frame(coef_df)
+coef_df$predictor <- rownames(coef_df)  # Convert row names to a column
+colnames(coef_df) <- c("estimate", "predictor")  # Rename columns
+
+
+# Check the result
+head(coef_df)
+
+# Subset the data to rows 2 through 11 and rows 61 through 63
+coef_data_subset <- coef_df %>%
+  slice(1:15)
+
+
+ggplot(coef_data_subset, aes(x = reorder(predictor, estimate), y = estimate, fill = estimate > 0)) +
+  geom_bar(stat = "identity", show.legend = FALSE) + 
+  scale_fill_manual(values = c("red", "green")) +  # Red for negative, green for positive
+  theme_minimal() +
+  coord_flip() +  # Flip the axes for easier reading of labels
+  labs(title = "Coefficient Plot: Positive vs Negative Effects",
+       x = "Predictor Variable",
+       y = "Coefficient Estimate")
+```
+
+
+```{r}
+model=polr(finalidk$class_max ~ finalidk$`Bedrooms` + finalidk$`ward`, method="logistic")
+co=tidy(model)
+co
+```
+
+
+
+```{r}
+
+
+# Given coefficients
+coefficients <- list(
+  Bedrooms = -4.794e-02,
+  tract_white_perc = 1.597e-01,
+  tract_pop = -1.644e-05,
+  Wall.Material1 = 0,  # Baseline category
+  Wall.Material2 = 8.279e-02,
+  Wall.Material3 = 5.199e-02,
+  Wall.Material4 = 2.323e-01,
+  Roof.Material1 = 0,  # Baseline category
+  Roof.Material2 = -2.695e-01,
+  Roof.Material3 = -1.634e-01,
+  Roof.Material4 = 3.200e-02,
+  Roof.Material5 = 6.711e-02,
+  Roof.Material6 = -1.363e-01,
+  Age = 1.854e-03,
+  Near.Major.Road1 = -3.238e-01,
+  ward41 =  7.207e-01,
+  `ward41:Age` = 3.137e-04
+)
+
+# Given variable values
+variables <- list(
+  Bedrooms = 1,
+  tract_white_perc = 0.75,
+  tract_pop = 7000,
+  Wall.Material1 = 1,  # Chosen category
+  Wall.Material2 = 0,
+  Wall.Material3 = 0,
+  Wall.Material4 = 1,
+  Roof.Material1 = 0,
+  Roof.Material2 = 0,
+  Roof.Material3 = 0,
+  Roof.Material4 = 0,
+  Roof.Material5 = 0,  # Chosen category
+  Roof.Material6 = 1,
+  Age = 20,
+  Near.Major.Road1 = 0,
+  ward41 = 1,
+  `ward41:Age` = 20
+)
+
+# Intercepts
+intercepts <- c(1.6526, 3.0198, 4.0526)
+
+# Compute the linear predictor (z)
+z <- sum(unlist(coefficients) * unlist(variables))
+
+# Compute cumulative probabilities using the logistic CDF
+p_0_5 <- 1 / (1 + exp(-(intercepts[1] - z)))
+p_5_10 <- 1 / (1 + exp(-(intercepts[2] - z))) - p_0_5
+p_10_15 <- 1 / (1 + exp(-(intercepts[3] - z))) - (p_0_5 + p_5_10)
+p_15_plus <- 1 - (p_0_5 + p_5_10 + p_10_15)
+
+# Output the probabilities
+probabilities <- list(
+  "0-5 ppb" = p_0_5,
+  "5-10 ppb" = p_5_10,
+  "10-15 ppb" = p_10_15,
+  "15+ ppb" = p_15_plus
+)
+
+print(probabilities)
+intercepts[1]+z
+```
+
+
+
+```{r}
+library(MASS)
+
+ordinal_model <- polr(finalidk$class ~  finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material + finalidk$Roof.Material + finalidk$ward + finalidk$Age + finalidk$Bedrooms  + finalidk$`Near.Major.Road`, 
+                      method = "logistic")
+
+ordinal_model
+```
+
+
+
+```{r}
+
+ordinal_model <- multinom(finalidk$class_max ~ finalidk$`Bedrooms` + finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward * finalidk$Age  + finalidk$`Near.Major.Road`
+                    )
+
+
+table(predict(ordinal_model))
+```
+
+
+
+```{r}
+summary(ordinal_model)
+```
+
+
+
+```{r}
+library(nnet)
+ordinal_model <- multinom(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward * finalidk$Age + finalidk$`Bedrooms` + finalidk$`Near.Major.Road`
+                    )
+ordinal_model
+```
+
+```{r}
+summary(ordinal_model)
+```
+
+
+
+
+```{r}
+table(predict(ordinal_model))
+ordinal_model$fitted.values
+```
+
+
+```{r}
+# Assuming your fitted model is 'ordinal_model'
+fitted_values <- fitted(ordinal_model)
+
+# Check the first few fitted values
+head(fitted_values)
+
+# If you want to view all values at once (after increasing the max.print option)
+print(fitted_values)
+
+```
+
+
+
+increases it not decrease its different
+```{r}
+ordinal_model <- multinom(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+finalidk$ward * finalidk$Age + finalidk$`Bedrooms` + finalidk$`Near.Major.Road`
+                    )
+ordinal_model
+```
+
+
+```{r}
+# Assuming your fitted model is 'ordinal_model'
+fitted_values <- fitted(ordinal_model)
+
+# Check the first few fitted values
+head(fitted_values)
+
+# If you want to view all values at once (after increasing the max.print option)
+print(fitted_values)
+
+table(predict(ordinal_model))
+```
+
+
+
+```{r}
+# Load necessary library
+library(MASS)
+
+# Fit the ordinal regression model
+ordinal_model <- polr(finalidk$class_max ~   finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material+finalidk$Roof.Material+  finalidk$`Bedrooms` + finalidk$`Near.Major.Road`+ finalidk$Land.Square.Feet +finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+ finalidk$Age *finalidk$ward , method="logistic"
+                    )
+
+# Define the specific house's predictor values
+specific_house <- data.frame(
+  Bedrooms = 2,
+  tract_white_perc = 0.75,
+  Age = 120,
+  tract_pop= 6000,
+  ward11=1,
+  Near.Major.Road1 = 1,
+  Land.Square.Feet=5000,
+  Prior.Tax.Year.Market.Value.Estimate..Land.=80000,
+  Roof.Material4=1,
+  Wall.Material2=1
+
+  
+  
+  
+)
+
+# Compute linear predictor (z) for the specific house
+z_specific <- sum(coef(ordinal_model) * as.numeric(specific_house))
+
+# Compute odds of being above 5 ppb (e.g., in 5-10 ppb or higher)
+intercept_1 <- ordinal_model$zeta[2]  # First threshold (0-5 ppb)
+odds_above_5 <- exp(z_specific - intercept_1)
+
+# Print the odds
+print(odds_above_5)
+
+```
+
+```{r}
+ordinal_model
+```
+
+
+```{r}
+# Given house characteristics
+Bedrooms <- 2
+tract_white_perc <- 0.75
+Age <- 120
+tract_pop <- 6000
+ward11 <- 1
+Near.Major.Road1 <- 1
+Land.Square.Feet <- 5000
+Prior.Tax.Value <- 80000
+Roof.Material4 <- 1
+Wall.Material2 <- 1
+
+# Coefficients from the model
+coefs <- c(
+  tract_white_perc = 2.763471e-01, 
+  tract_pop = -1.753025e-05, 
+  Wall.Material2 = 8.158228e-02, 
+  Roof.Material4 = 3.402460e-02, 
+  Bedrooms = -4.622626e-02, 
+  Near.Major.Road1 = -3.209896e-01, 
+  Land.Square.Feet = 4.248468e-05, 
+  Prior.Tax.Value = -2.398436e-06, 
+  Age = 1.953531e-03, 
+  ward11 = 2.876365e-01, 
+  `Age:ward11` = 5.570581e-03
+)
+
+# Compute the log-odds
+log_odds <- tract_white_perc * coefs["tract_white_perc"] +
+            tract_pop * coefs["tract_pop"] +
+            Wall.Material2 * coefs["Wall.Material2"] +
+            Roof.Material4 * coefs["Roof.Material4"] +
+            Bedrooms * coefs["Bedrooms"] +
+            Near.Major.Road1 * coefs["Near.Major.Road1"] +
+            Land.Square.Feet * coefs["Land.Square.Feet"] +
+            Prior.Tax.Value * coefs["Prior.Tax.Value"] +
+            Age * coefs["Age"] +
+            ward11 * coefs["ward11"] +
+            Age * ward11 * coefs["Age:ward11"]
+
+# Convert to odds ratio
+odds_ratio <- exp(log_odds)
+
+# Print results
+cat("Log-Odds:", log_odds, "\n")
+cat("Odds Ratio:", odds_ratio, "\n")
+
+```
+
+
+```{r}
+# Given house characteristics
+Bedrooms <- 2
+tract_white_perc <- 0.25
+Age <- 120
+tract_pop <- 6000
+ward11 <- 1
+Near.Major.Road1 <- 1
+Land.Square.Feet <- 5000
+Prior.Tax.Value <- 80000
+Roof.Material4 <- 1
+Wall.Material2 <- 1
+
+# Model Coefficients
+coefs <- c(
+  tract_white_perc = 2.763471e-01, 
+  tract_pop = -1.753025e-05, 
+  Wall.Material2 = 8.158228e-02, 
+  Roof.Material4 = 3.402460e-02, 
+  Bedrooms = -4.622626e-02, 
+  Near.Major.Road1 = -3.209896e-01, 
+  Land.Square.Feet = 4.248468e-05, 
+  Prior.Tax.Value = -2.398436e-06, 
+  Age = 1.953531e-03, 
+  ward11 = -7.522534e-02 , 
+  `Age:ward11` = 5.570581e-03
+)
+
+# Intercept for 0ppb-5ppb|5ppb-10ppb
+intercept_5ppb <- 1.648944 
+
+ppb =  3.017026
+
+# Compute the cumulative log-odds for being above 5ppb
+log_odds_5ppb <- intercept_5ppb - (
+            tract_white_perc * coefs["tract_white_perc"] +
+            tract_pop * coefs["tract_pop"] +
+            Wall.Material2 * coefs["Wall.Material2"] +
+            Roof.Material4 * coefs["Roof.Material4"] +
+            Bedrooms * coefs["Bedrooms"] +
+            Near.Major.Road1 * coefs["Near.Major.Road1"] +
+            Land.Square.Feet * coefs["Land.Square.Feet"] +
+            Prior.Tax.Value * coefs["Prior.Tax.Value"] +
+            Age * coefs["Age"] +
+            ward11 * coefs["ward11"] +
+            Age * ward11 * coefs["Age:ward11"]
+)
+
+log_odds_10ppb <- ppb - (
+            tract_white_perc * coefs["tract_white_perc"] +
+            tract_pop * coefs["tract_pop"] +
+            Wall.Material2 * coefs["Wall.Material2"] +
+            Roof.Material4 * coefs["Roof.Material4"] +
+            Bedrooms * coefs["Bedrooms"] +
+            Near.Major.Road1 * coefs["Near.Major.Road1"] +
+            Land.Square.Feet * coefs["Land.Square.Feet"] +
+            Prior.Tax.Value * coefs["Prior.Tax.Value"] +
+            Age * coefs["Age"] +
+            ward11 * coefs["ward11"] +
+            Age * ward11 * coefs["Age:ward11"]
+)
+
+log_odds_5ppb=log_odds_10ppb+log_odds_5ppb
+
+# Convert to odds
+odds_above_5ppb <- exp(log_odds_5ppb)
+
+# Print results
+cat("Log-Odds of being above 5ppb:", log_odds_5ppb, "\n")
+cat("Odds of being above 5ppb:", odds_above_5ppb, "\n")
+
+```
+
+```{r}
+# Convert odds to percentage increase
+percentage_increase <- (1-odds_above_5ppb ) * 100
+
+# Print result in a clear sentence
+cat(sprintf("Your likelihood of having a draw of water above 5ppb increases by %.2f%%.", percentage_increase), "\n")
+
+```
+
+
+```{r}
+# Given house characteristics
+Bedrooms <- 2
+tract_white_perc <- 0.95
+Age <- 160
+tract_pop <- 6000
+ward11 <- 1
+Near.Major.Road1 <- 0
+Land.Square.Feet <- 8000
+Prior.Tax.Value <- 40000
+Roof.Material4 <- 1
+Wall.Material2 <- 1
+
+# Model Coefficients
+coefs <- c(
+  tract_white_perc = 2.763471e-01, 
+  tract_pop = -1.753025e-05, 
+  Wall.Material2 = 8.158228e-02, 
+  Roof.Material4 = 3.402460e-02, 
+  Bedrooms = -4.622626e-02, 
+  Near.Major.Road1 = -3.209896e-01, 
+  Land.Square.Feet = 4.248468e-05, 
+  Prior.Tax.Value = -2.398436e-06, 
+  Age = 1.953531e-03, 
+  ward11 = -7.522534e-02 , 
+  `Age:ward11` = 6.436766e-03
+)
+
+# Intercepts for different categories
+intercept_5ppb <- 1.648944 
+intercept_10ppb <- 3.017026
+intercept_15ppb= 4.049918 
+
+# Compute the linear predictor (X * beta)
+linear_predictor <- tract_white_perc * coefs["tract_white_perc"] +
+                    tract_pop * coefs["tract_pop"] +
+                    Wall.Material2 * coefs["Wall.Material2"] +
+                    Roof.Material4 * coefs["Roof.Material4"] +
+                    Bedrooms * coefs["Bedrooms"] +
+                    Near.Major.Road1 * coefs["Near.Major.Road1"] +
+                    Land.Square.Feet * coefs["Land.Square.Feet"] +
+                    Prior.Tax.Value * coefs["Prior.Tax.Value"] +
+                    Age * coefs["Age"] +
+                    ward11 * coefs["ward11"] +
+                    Age * ward11 * coefs["Age:ward11"]
+
+# Compute the log-odds for being above 5ppb
+log_odds_5ppb <- -intercept_5ppb + linear_predictor
+
+# Compute the log-odds for being above 10ppb
+log_odds_10ppb <- -intercept_10ppb + linear_predictor
+
+# Compute the log-odds for being above 15ppb
+log_odds_15ppb <- -intercept_15ppb + linear_predictor
+
+
+
+# Convert log-odds to odds
+odds_above_5ppb <- exp(log_odds_5ppb)
+odds_above_10ppb <- exp(log_odds_10ppb)
+odds_above_15ppb <- exp(log_odds_15ppb)
+# Print log-odds and odds
+cat("Log-Odds of being above 5ppb:", log_odds_5ppb, "\n")
+cat("Odds of being above 5ppb:", odds_above_5ppb, "\n")
+cat("Log-Odds of being above 10ppb:", log_odds_10ppb, "\n")
+cat("Odds of being above 10ppb:", odds_above_10ppb, "\n")
+cat("Log-Odds of being above 15ppb:", log_odds_15ppb, "\n")
+cat("Odds of being above 15ppb:", odds_above_15ppb, "\n")
+
+# Convert odds to percentage increase for 10ppb
+percentage_increase_10ppb <- ( odds_above_15ppb-odds_above_5ppb-1-odds_above_10ppb) * 100
+
+
+# Print result in a clear sentence for 10ppb
+cat(sprintf("Your likelihood of having a draw of water above 10ppb increases by %.2f%%.", percentage_increase_10ppb), "\n")
+
+```
+
+
+```{r}
+fitted(ordinal_model)
+head(finalidk)
+```
+
+
+```{r}
+
+# Given house characteristics
+Bedrooms <- 2
+tract_white_perc <- 0.95
+Age <- 16
+tract_pop <- 6000
+ward11 <- 1
+Near.Major.Road1 <- 1
+Land.Square.Feet <- 4000
+Prior.Tax.Value <- 90000
+Roof.Material4 <- 0
+Wall.Material2 <- 0
+
+# Model Coefficients
+coefs <- c(
+  tract_white_perc = 2.763471e-01, 
+  tract_pop = -1.753025e-05, 
+  Wall.Material2 = 8.158228e-02, 
+  Roof.Material4 = 3.402460e-02, 
+  Bedrooms = -4.622626e-02, 
+  Near.Major.Road1 = -3.209896e-01, 
+  Land.Square.Feet = 4.248468e-05, 
+  Prior.Tax.Value = -2.398436e-06, 
+  Age = 1.953531e-03, 
+  ward11 = -7.522534e-02 , 
+  `Age:ward11` = 6.436766e-03
+)
+
+# Intercepts for different categories
+intercept_5ppb <- 1.648944 
+intercept_10ppb <- 3.017026
+intercept_15ppb= 4.049918 
+
+# Compute the linear predictor (X * beta)
+linear_pred <-  tract_white_perc * coefs["tract_white_perc"] +
+                    tract_pop * coefs["tract_pop"] +
+                    Wall.Material2 * coefs["Wall.Material2"] +
+                    Roof.Material4 * coefs["Roof.Material4"] +
+                    Bedrooms * coefs["Bedrooms"] +
+                    Near.Major.Road1 * coefs["Near.Major.Road1"] +
+                    Land.Square.Feet * coefs["Land.Square.Feet"] +
+                    Prior.Tax.Value * coefs["Prior.Tax.Value"] +
+                    Age * coefs["Age"] +
+                    ward11 * coefs["ward11"] +
+                    Age * ward11 * coefs["Age:ward11"]
+
+# Intercepts for different categories
+cutpoint_1 <- 1.648944 
+cutpoint_2 <- 3.017026
+cutpoint_3= 4.049918 
+
+# Compute cumulative probabilities
+prob_1 <- 1 / (1 + exp(-(linear_pred - cutpoint_1)))
+prob_2 <- 1 / (1 + exp(-(linear_pred - cutpoint_2)))
+prob_3 <- 1 / (1 + exp(-(linear_pred - cutpoint_3)))
+
+prob_1
+prob_2
+prob_3
+# Get the probability for each category
+prob_1_to_2 <- prob_2 - prob_1  # Probability of category 1
+prob_2_to_3 <- prob_3 - prob_2  # Probability of category 2
+prob_above_3 <- 1 - prob_3      # Probability of category 3 or higher
+
+cat("Probability of being at 5ppb:", prob_1_to_2, "\n")
+cat("Probability of being at 10ppb:", prob_2_to_3, "\n")
+cat("Probability of being at 15ppb+:", prob_above_3, "\n")
+
+```
+
+
+```{r}
+
+# Given house characteristics
+Bedrooms <- 2
+tract_white_perc <- 0.75
+Age <- 120
+tract_pop <- 6000
+ward11 <- 1
+Near.Major.Road1 <- 1
+Land.Square.Feet <- 4000
+Prior.Tax.Value <- 40000
+Roof.Material4 <- 1
+Wall.Material2 <- 1
+
+# Model Coefficients
+coefs <- c(
+  tract_white_perc = 2.763471e-01, 
+  tract_pop = -1.753025e-05, 
+  Wall.Material2 = 8.158228e-02, 
+  Roof.Material4 = 3.402460e-02, 
+  Bedrooms = -4.622626e-02, 
+  Near.Major.Road1 = -3.209896e-01, 
+  Land.Square.Feet = 4.248468e-05, 
+  Prior.Tax.Value = -2.398436e-06, 
+  Age = 1.953531e-03, 
+  ward11 = -7.522534e-02 , 
+  `Age:ward11` = 6.436766e-03
+)
+
+
+
+# Compute the linear predictor (X * beta)
+linear_predictor <- tract_white_perc * coefs["tract_white_perc"] +
+                    tract_pop * coefs["tract_pop"] +
+                    Wall.Material2 * coefs["Wall.Material2"] +
+                    Roof.Material4 * coefs["Roof.Material4"] +
+                    Bedrooms * coefs["Bedrooms"] +
+                    Near.Major.Road1 * coefs["Near.Major.Road1"] +
+                    Land.Square.Feet * coefs["Land.Square.Feet"] +
+                    Prior.Tax.Value * coefs["Prior.Tax.Value"] +
+                    Age * coefs["Age"] +
+                    ward11 * coefs["ward11"] +
+                    Age * ward11 * coefs["Age:ward11"]
+
+# Given intercepts for different thresholds
+intercept_0ppb <- 0  # Baseline for 0ppb
+intercept_5ppb <- 1.648944
+intercept_10ppb <- 3.017026
+intercept_15ppb <- 4.049918   # Just an example value, you can set this based on your model if it's available.
+
+# Compute log-odds for each threshold (using the intercepts + the linear predictor)
+log_odds_0ppb <- intercept_0ppb - linear_predictor
+log_odds_5ppb <- intercept_5ppb - linear_predictor
+log_odds_10ppb <- intercept_10ppb - linear_predictor
+log_odds_15ppb <- intercept_15ppb - linear_predictor
+
+# Convert log-odds to odds
+odds_0ppb <- exp(log_odds_0ppb)
+odds_5ppb <- exp(log_odds_5ppb)
+odds_10ppb <- exp(log_odds_10ppb)
+odds_15ppb <- exp(log_odds_15ppb)
+
+# Calculate the probabilities for each category
+prob_0ppb <- 1 / (1 + odds_5ppb)  # Probability of being in 0ppb to 5ppb
+prob_5ppb <- odds_5ppb / (1 + odds_5ppb + odds_10ppb)  # Probability of being in 5ppb to 10ppb
+prob_10ppb <- odds_10ppb / (1 + odds_10ppb + odds_15ppb)  # Probability of being in 10ppb to 15ppb
+prob_15ppb <- odds_15ppb / (1 + odds_15ppb)  # Probability of being in 15ppb+
+
+# Compare the observed proportions with the model's probabilities
+
+# Observed proportions
+observed_proportions <- c(7409, 2971, 812, 481)
+
+# Print the model probabilities and compare
+cat(sprintf("Probability of being in the 0ppb-5ppb group: %.4f\n", prob_0ppb))
+cat(sprintf("Probability of being in the 5ppb-10ppb group: %.4f\n", prob_5ppb))
+cat(sprintf("Probability of being in the 10ppb-15ppb group: %.4f\n", prob_10ppb))
+cat(sprintf("Probability of being in the 15ppb+ group: %.4f\n", prob_15ppb))
+
+# Calculate the expected counts based on the model probabilities
+total_samples <- sum(observed_proportions)
+expected_counts <- c(prob_0ppb, prob_5ppb, prob_10ppb, prob_15ppb) * total_samples
+
+cat("Expected counts based on model probabilities:\n")
+print(expected_counts)
+
+# Output the observed proportions
+cat("Observed proportions:\n")
+print(observed_proportions)
+
+
+```
+
+
+
+```{r}
+
+# Values
+values <- c(18134, 5731, 2090, 1818)
+
+# Total sum of the values
+total_sum <- sum(values)
+
+# Calculate proportions for each value
+proportions <- values / total_sum
+
+# Print proportions
+cat("Proportions:", proportions, "\n")
+
+```
+
+
+this is ittttt!!!
+
+```{r}
+# Given coefficients
+coefficients <- c(
+  "tract_white_perc" = 0.2763471,
+  "tract_pop" = -1.753025e-05,
+  "Wall.Material2" = 0.08158228,
+  "Wall.Material3" = 0.04531658,
+  "Wall.Material4" = 0.2233206,
+  "Roof.Material2" = -0.2631726,
+  "Roof.Material3" = -0.1283593,
+  "Roof.Material4" = 0.0340246,
+  "Roof.Material5" = 0.06453281,
+  "Roof.Material6" = -0.1259604,
+  "Bedrooms" = -0.04622626,
+  "Near.Major.Road1" = -0.3209896,
+  "Land.Square.Feet" = 4.248468e-05,
+  "Prior.Tax.Year.Market.Value.Estimate..Land." = -2.398436e-06,
+  "Age" = 0.001953531, 
+  "ward"=1.663742e+00 , #change per ward
+  "both"=-3.321944e-03  #change per ward
+)
+
+# Given intercepts
+intercepts <- c("5ppb" = 1.648944, "10ppb" = 3.017026, "15ppb" = 4.049918)
+
+# Sample property data
+property_data <- c(
+  "tract_white_perc" = 0.003511510,  # Example value
+  "tract_pop" = 5126,  # Example value
+  "Wall.Material2" = 0,
+  "Wall.Material3" = 0,  # This property has wall material type 3
+  "Wall.Material4" = 1,
+  "Roof.Material2" = 0,
+  "Roof.Material3" = 0,
+  "Roof.Material4" = 1,  # This property has roof material type 4
+  "Roof.Material5" = 0,
+  "Roof.Material6" = 0,
+  "Bedrooms" = 3,
+  "Near.Major.Road1" = 0,  # This property is near a major road
+  "Land.Square.Feet" = 6560,
+  "Prior.Tax.Year.Market.Value.Estimate..Land." = 35080,
+  "Age" = 70, 
+  "ward"=1, 
+  "both"=70
+)
+
+# Compute linear predictor
+linear_predictor <- sum(coefficients * property_data, na.rm = TRUE)
+
+# Compute log-odds
+log_odds_5ppb <- linear_predictor - intercepts["5ppb"]
+log_odds_10ppb <- linear_predictor - intercepts["10ppb"]
+log_odds_15ppb <- linear_predictor - intercepts["15ppb"]
+
+# Compute linear predictor
+linear_predictor <- sum(coefficients * property_data, na.rm = TRUE)
+
+# Compute cumulative probabilities
+p_5ppb <- exp(intercepts["5ppb"] - linear_predictor) / (1 + exp(intercepts["5ppb"] - linear_predictor))
+p_10ppb <- exp(intercepts["10ppb"] - linear_predictor) / (1 + exp(intercepts["10ppb"] - linear_predictor))
+p_15ppb <- exp(intercepts["15ppb"] - linear_predictor) / (1 + exp(intercepts["15ppb"] - linear_predictor))
+
+# Compute category probabilities
+prob_0_5ppb <-  p_5ppb
+prob_5_10ppb <- p_10ppb - prob_0_5ppb
+prob_10_15ppb <- p_15ppb - prob_5_10ppb - prob_0_5ppb
+prob_15ppb_plus <- 1 - p_15ppb
+
+# Print results
+cat("Predicted probabilities:\n")
+cat("P(Y ≤ 5ppb)    :", prob_0_5ppb, "\n")
+cat("P(5 < Y ≤ 10ppb):", prob_5_10ppb, "\n")
+cat("P(10 < Y ≤ 15ppb):", prob_10_15ppb, "\n")
+cat("P(Y > 15ppb)   :", prob_15ppb_plus, "\n")
+
+```
+```{r}
+# Predicted probabilities
+pred_probs <- c(0.4642242 , 0.3086713  , 0.1324108  , 0.09469371  )
+
+# True proportions (true probabilities)
+true_probs <- c(0.6529363, 0.2063515, 0.07525294, 0.06545926)
+
+# Calculate percent change for each class
+percent_change <- ((pred_probs - true_probs) / true_probs) * 100
+
+# Print the results
+cat("Percent Change for each class:\n")
+for (i in 1:length(percent_change)) {
+  cat(sprintf("Class %d: %.2f%%\n", i, percent_change[i]))
+}
+
+```
+
+
+
+```{r}
+fitted(ordinal_model)
+```
+
+
+```{r}
+summary(finalidk$class_max)
+ordinal_model
+```
+
+
+```{r}
+mod=polr(binnin~ tract_white_perc + tract_pop + Wall.Material + Roof.Material + 
+             Bedrooms + Near.Major.Road + Land.Square.Feet + 
+             Prior.Tax.Year.Market.Value.Estimate..Land. + 
+             Age , data = wardlevel_data, family = "binomial")
+```
+
+
+```{r}
+library(MASS)
+mod=polr(classnin~ tract_white_perc + tract_pop + Wall.Material + Roof.Material + 
+             Bedrooms + Near.Major.Road + Land.Square.Feet + 
+             Prior.Tax.Year.Market.Value.Estimate..Land. + 
+             Age , data = wardlevel_data, method = "logistic")
+mod
+
+```
+
+better about
+
+```{r}
+# Store models in a list
+models_per_ward <- wardlevel_data %>%
+  group_split(ward) %>%
+  setNames(unique(wardlevel_data$ward)) %>%
+  lapply(function(df) {
+    polr(classnin ~ tract_white_perc   + 
+               Bedrooms  + Land.Square.Feet + 
+               Prior.Tax.Year.Market.Value.Estimate..Land. + 
+               Age, 
+         data = df, method = "logistic")
+  })
+
+```
+
+unsure about 
+```{r}
+# Store models in a list
+models_per_ward <- finalidk %>%
+  group_split(ward) %>%
+  setNames(unique(finalidk$ward)) %>%
+  lapply(function(df) {
+    polr(class_max ~ tract_white_perc + 
+             Bedrooms + Land.Square.Feet + 
+             Prior.Tax.Year.Market.Value.Estimate..Land. + 
+             Age , 
+         data = df, method = "logistic")
+  })
+
+```
+
+
+
+```{r}
+library(boot)
+library(dplyr)
+bootstrap_stratified <- function(data, indices) {
+  sampled_data <- data %>%
+    group_by(ward) %>%
+    sample_n(size = min(table(data$ward)), replace = TRUE) %>%  # Balance wards
+    ungroup()
+  
+   return(quantile(sampled_data$Max, 0.90, na.rm = TRUE))  # 90th percentile
+}
+set.seed(123)  # For reproducibility
+boot_results <- boot(data = finalidk, statistic = bootstrap_stratified, R = 400)
+
+# View results
+print(boot_results)
+
+```
+
+
+```{r}
+bootstrap_stratified <- function(data, indices) {
+  sampled_data <- data %>%
+    group_by(ward) %>%
+    sample_n(size = min(table(data$ward)), replace = TRUE) %>%  # Balance wards
+    ungroup()
+  
+  # Count the number of draws in each class (assuming 'classnin' is the class variable)
+  class_counts <- table(sampled_data$class_max)
+  
+  return(class_counts)
+}
+
+set.seed(123)  # For reproducibility
+boot_results <- boot(data = finalidk, statistic = bootstrap_stratified, R = 200)
+
+# View results
+print(boot_results)
+
+```
+
+
+```{r}
+
+library(sf)
+library(spdep)
+
+library(tidyverse)
+library(spatialreg)
+
+tract_sf <- st_read("C:/Users/vreid/Downloads/Neighborhoods_2012b_20250324/geo_export_03f0b53f-b4da-4d12-9e59-61338914d7b2.shp")
+#chicago_sf <- chicagosf %>%
+#  mutate(geometry = st_as_sfc(tract_geoid)) %>%  # No CRS needed in st_as_sfc()
+#  st_as_sf(crs = 4326)  # Assign CRS
+#st_geometry(chicago_sf)  # Should return MULTIPOLYGON geometries
+#st_crs(chicago_sf)  # Should return EPSG:4326
+# Ensure chicago_sf has valid geometries
+chicago_sf <- st_make_valid(tract_sf)  
+
+spatialpred= finalidk %>% drop_na(longitude, latitude)
+predictors_sf <- st_as_sf(spatialpred, coords = c("longitude", "latitude"), crs = 4326)  # Ensure correct CRS
+
+merged_data <- st_join(predictors_sf, chicago_sf, join = st_within)
+```
+
+
+```{r}
+merged_data <- merged_data %>% drop_na(sec_neigh)
+
+library(MASS)
+# Store models in a list
+models_per_ward <- merged_data %>%
+  group_split(sec_neigh) %>%
+  setNames(unique(merged_data$sec_neigh)) %>%
+  lapply(function(df) {
+    polr(class_max ~ tract_white_perc   + 
+               Bedrooms  + Land.Square.Feet + 
+               Prior.Tax.Year.Market.Value.Estimate..Land. + 
+               Age, 
+         data = df, method = "logistic")
+  })
+```
+
+```{r}
+merged_data <- merged_data %>%
+  group_by(sec_neigh) %>%
+  filter(n() > 5) %>%  # Adjust threshold as needed
+  ungroup()
+
+
+```
+
+
+```{r}
+models_per_ward <- merged_data %>%
+  group_split(sec_neigh) %>%
+  setNames(unique(merged_data$sec_neigh)) %>%
+  lapply(function(df) {
+    print(paste("Processing", unique(df$sec_neigh), "Rows:", nrow(df)))
+    
+    # Skip small groups
+    if (nrow(df) < 4) return(NULL)
+
+    # Convert categorical response
+    df$class_max <- as.ordered(df$class_max)
+
+    # Remove NAs again
+    df <- df %>% drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+                         Prior.Tax.Year.Market.Value.Estimate..Land., Age)
+
+    # Try fitting model safely
+    tryCatch({
+      polr(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+                   Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+           data = df, method = "logistic")
+    }, error = function(e) {
+      print(paste("Error in", unique(df$sec_neigh)))
+      print(e)
+      return(NULL)
+    })
+  })
+
+```
+
+
+```{r}
+library(MASS)
+# Initialize an empty list to store models for each neighborhood
+neighborhood_models <- list()
+
+# Iterate over each unique neighborhood
+for (neighborhood in unique(merged_data$sec_neigh)) {
+  # Subset the data for the current neighborhood
+  neighborhood_data <- merged_data %>% 
+    filter(sec_neigh == neighborhood) %>%
+    drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+            Prior.Tax.Year.Market.Value.Estimate..Land., Age)
+  
+  # Check if there is enough data for model fitting (at least 4 rows)
+  if (nrow(neighborhood_data) >= 4) {
+    # Convert categorical response variable to ordered factor
+    neighborhood_data$class_max <- as.ordered(neighborhood_data$class_max)
+    
+    # Try fitting the logistic regression model
+    model <- tryCatch({
+      polr(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+             Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+           data = neighborhood_data)
+    }, error = function(e) {
+      # In case of error, print the error message
+      print(paste("Error in processing", neighborhood, ":", e$message))
+      return(NULL)
+    })
+    
+    # Store the model if it's valid
+    if (!is.null(model)) {
+      neighborhood_models[[neighborhood]] <- model
+    }
+  } else {
+    print(paste("Not enough data for neighborhood:", neighborhood))
+  }
+}
+
+# View the list of models (for example, for Norwood Park)
+print(neighborhood_models[["Norwood Park"]])
+```
+
+
+
+```{r}
+library(nnet)
+# Initialize an empty list to store models for each neighborhood
+neighborhood_models <- list()
+
+# Iterate over each unique neighborhood
+for (neighborhood in unique(merged_data$sec_neigh)) {
+  # Subset the data for the current neighborhood
+  neighborhood_data <- merged_data %>% 
+    filter(sec_neigh == neighborhood) %>%
+    drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+            Prior.Tax.Year.Market.Value.Estimate..Land., Age)
+  
+  # Check if there is enough data for model fitting (at least 4 rows)
+  if (nrow(neighborhood_data) >= 4) {
+    # Convert categorical response variable to ordered factor
+    neighborhood_data$class_max <- as.ordered(neighborhood_data$class_max)
+    
+    # Try fitting the logistic regression model
+    model <- tryCatch({
+      multinom(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+             Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+           data = neighborhood_data)
+    }, error = function(e) {
+      # In case of error, print the error message
+      print(paste("Error in processing", neighborhood, ":", e$message))
+      return(NULL)
+    })
+    
+    # Store the model if it's valid
+    if (!is.null(model)) {
+      neighborhood_models[[neighborhood]] <- model
+    }
+  } else {
+    print(paste("Not enough data for neighborhood:", neighborhood))
+  }
+}
+
+# View the list of models (for example, for Norwood Park)
+print(neighborhood_models[["Norwood Park"]])
+
+```
+
+this right
+
+```{r}
+# Load required packages
+library(nnet)
+library(dplyr)
+
+# Initialize an empty list to store models for each neighborhood
+neighborhood_models <- list()
+
+# Initialize an empty data frame to store coefficients
+coefficients_df <- data.frame(
+  neighborhood = character(),
+  category = character(),
+  variable = character(),
+  coefficient = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Iterate over each unique neighborhood
+for (neighborhood in unique(merged_data$sec_neigh)) {
+  
+  # Subset the data for the current neighborhood
+  neighborhood_data <- merged_data %>% 
+    filter(sec_neigh == neighborhood) %>%
+    drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+            Prior.Tax.Year.Market.Value.Estimate..Land., Age, class_max)
+  
+  # Check if there is enough data for model fitting (at least 4 rows)
+  if (nrow(neighborhood_data) >= 4) {
+    
+    # Convert response variable to ordered factor
+    neighborhood_data$class_max <- as.ordered(neighborhood_data$class_max)
+    
+    # Fit multinomial logistic regression model
+    model <- tryCatch({
+      multinom(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+                 Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+               data = neighborhood_data)
+    }, error = function(e) {
+      print(paste("Error in processing", neighborhood, ":", e$message))
+      return(NULL)
+    })
+    
+    # Store the model if it's valid
+    if (!is.null(model)) {
+      neighborhood_models[[neighborhood]] <- model
+      
+      # Extract coefficients and ensure proper structure
+      model_coefficients <- coef(model)  
+      
+      # Check if coefficients are properly structured
+      if (!is.null(dim(model_coefficients))) {
+        
+        # Convert coefficient matrix into long format
+        temp_df <- as.data.frame(as.table(model_coefficients))  
+        colnames(temp_df) <- c("category", "variable", "coefficient")  # Rename columns
+        
+        # Add neighborhood information
+        temp_df$neighborhood <- neighborhood
+        
+        # Append to the coefficients dataframe
+        coefficients_df <- rbind(coefficients_df, temp_df)
+        
+      } else {
+        print(paste("Warning: No valid coefficients for neighborhood:", neighborhood))
+      }
+    }
+    
+  } else {
+    print(paste("Not enough data for neighborhood:", neighborhood))
+  }
+}
+
+# View the resulting coefficients data frame
+print(coefficients_df)
+
+
+```
+
+```{r}
+# Initialize an empty dataframe for coefficients
+coefficients_df <- data.frame(
+  neighborhood = character(),
+  category = character(),
+  variable = character(),
+  coefficient = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Iterate through each neighborhood
+for (neighborhood in unique(merged_data$sec_neigh)) {
+  neighborhood_data <- merged_data %>% 
+    filter(sec_neigh == neighborhood) %>%
+    drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+            Prior.Tax.Year.Market.Value.Estimate..Land., Age, class_max)
+  
+  if (nrow(neighborhood_data) >= 4) {
+    neighborhood_data$class_max <- as.ordered(neighborhood_data$class_max)
+    
+    model <- tryCatch({
+      polr(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+               Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+               data = neighborhood_data, method="logistic")
+    }, error = function(e) {
+      print(paste("Error in processing", neighborhood, ":", e$message))
+      return(NULL)
+    })
+    
+    if (!is.null(model)) {
+      neighborhood_models[[neighborhood]] <- model
+      
+      # Extract coefficients and corresponding categories
+      model_coefficients <- coef(model)  # Matrix with rows as categories
+      coef_categories <- rownames(model_coefficients)  # Extract category labels (5ppb-10ppb, etc.)
+      
+      # Reshape into a data frame
+      temp_df <- as.data.frame(as.table(model_coefficients))  # Converts matrix to long format
+      colnames(temp_df) <- c("category", "variable", "coefficient")  # Rename columns
+      
+      # Add neighborhood name
+      temp_df$neighborhood <- neighborhood
+      
+      # Append to the main coefficients dataframe
+      coefficients_df <- rbind(coefficients_df, temp_df)
+    }
+  } else {
+    print(paste("Not enough data for neighborhood:", neighborhood))
+  }
+}
+
+
+
+```
+
+
+
+```{r}
+ # Load required packages
+library(nnet)
+library(dplyr)
+library(MASS)  # polr() function for ordered logistic regression
+
+# Initialize an empty list to store models for each neighborhood
+neighborhood_models <- list()
+
+# Initialize an empty data frame to store coefficients
+coefficients_df <- data.frame(
+  neighborhood = character(),
+  variable = character(),
+  coefficient = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Iterate over each unique neighborhood
+for (neighborhood in unique(merged_data$pri_neigh)) {
+  
+  # Subset the data for the current neighborhood
+  neighborhood_data <- merged_data %>% 
+    filter(pri_neigh == neighborhood) %>%
+    drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+            Prior.Tax.Year.Market.Value.Estimate..Land., Age, class_max)
+  
+  # Check if there is enough data for model fitting (at least 4 rows)
+  if (nrow(neighborhood_data) >= 4) {
+    
+    # Convert response variable to ordered factor
+    neighborhood_data$class_max <- as.ordered(neighborhood_data$class_max)
+    
+    # Fit ordered logistic regression model
+    model <- tryCatch({
+      polr(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+             Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+           data = neighborhood_data, method = "logistic")
+    }, error = function(e) {
+      print(paste("Error in processing", neighborhood, ":", e$message))
+      return(NULL)
+    })
+    
+    # Store the model if it's valid
+    if (!is.null(model)) {
+      neighborhood_models[[neighborhood]] <- model
+      
+      # Extract coefficients
+      model_coefficients <- coef(model)  
+      
+      # Ensure coefficient names exist
+      coef_names <- if (length(model_coefficients) > 0) names(model_coefficients) else character(0)
+      
+      # Create a temporary data frame only if coefficients exist
+      if (length(model_coefficients) > 0) {
+        temp_df <- data.frame(
+          neighborhood = neighborhood,
+          variable = coef_names,
+          coefficient = as.vector(model_coefficients),
+          stringsAsFactors = FALSE
+        )
+        
+        # Append to the main coefficients dataframe
+        coefficients_df <- rbind(coefficients_df, temp_df)
+      }
+    }
+    
+  } else {
+    print(paste("Not enough data for neighborhood:", neighborhood))
+  }
+}
+
+# View the resulting coefficients data frame
+print(coefficients_df)
+
+```
+
+
+```{r}
+# Load required packages
+library(nnet)
+library(dplyr)
+library(MASS)  # polr() function for ordered logistic regression
+
+# Initialize an empty list to store models for each neighborhood
+neighborhood_models <- list()
+
+# Initialize an empty data frame to store coefficients and intercepts
+coefficients_df <- data.frame(
+  neighborhood = character(),
+  variable = character(),
+  coefficient = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Iterate over each unique neighborhood
+for (neighborhood in unique(merged_data$sec_neigh)) {
+  
+  # Subset the data for the current neighborhood
+  neighborhood_data <- merged_data %>% 
+    filter(sec_neigh == neighborhood) %>%
+    drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+            Prior.Tax.Year.Market.Value.Estimate..Land., Age, class_max)
+  
+  # Check if there is enough data for model fitting (at least 4 rows)
+  if (nrow(neighborhood_data) >= 4) {
+    
+    # Convert response variable to ordered factor
+    neighborhood_data$class_max <- as.ordered(neighborhood_data$class_max)
+    
+    # Fit ordered logistic regression model
+    model <- tryCatch({
+      polr(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+             Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+           data = neighborhood_data, method = "logistic")
+    }, error = function(e) {
+      print(paste("Error in processing", neighborhood, ":", e$message))
+      return(NULL)
+    })
+    
+    # Store the model if it's valid
+    if (!is.null(model)) {
+      neighborhood_models[[neighborhood]] <- model
+      
+      # Extract coefficients
+      model_coefficients <- coef(model)  
+      coef_names <- if (length(model_coefficients) > 0) names(model_coefficients) else character(0)
+      
+      # Extract intercepts (thresholds)
+      model_intercepts <- model$zeta  
+      intercept_names <- if (length(model_intercepts) > 0) names(model_intercepts) else character(0)
+      
+      # Create a temporary data frame for coefficients
+      if (length(model_coefficients) > 0) {
+        temp_coef_df <- data.frame(
+          neighborhood = neighborhood,
+          variable = coef_names,
+          coefficient = as.vector(model_coefficients),
+          stringsAsFactors = FALSE
+        )
+        coefficients_df <- rbind(coefficients_df, temp_coef_df)
+      }
+      
+      # Create a temporary data frame for intercepts
+      if (length(model_intercepts) > 0) {
+        temp_intercept_df <- data.frame(
+          neighborhood = neighborhood,
+          variable = intercept_names,
+          coefficient = as.vector(model_intercepts),
+          stringsAsFactors = FALSE
+        )
+        coefficients_df <- rbind(coefficients_df, temp_intercept_df)
+      }
+    }
+    
+  } else {
+    print(paste("Not enough data for neighborhood:", neighborhood))
+  }
+}
+
+# View the resulting coefficients and intercepts data frame
+print(coefficients_df)
+
+```
+
+
+
+fix this for visual--FIXEDDD
+
+coefficients_df1 <- coefficients_df %>%
+   filter(variable %in% c("Bedrooms", "Age", "Land.Square.Feet","Prior.Tax.Year.Market.Value.Estimate..Land.","tract_white_perc")) %>%
+  filter(coefficient >= -1 & coefficient <= 1)
+  
+  DO ONE AT A TIME AND FILTER TO APPROPRIATE RANGE YAYYY
+  
+  fixed?
+```{r}
+coefficients_df1 <- coefficients_df %>%
+  filter(variable %in% c("Age", "Bedrooms", "Land.Square.Feet", "Prior.Tax.Year.Market.Value.Estimate..Land.","tract_white_perc")) 
+
+ggplot(coefficients_df1, aes(x = variable, y = neighborhood, fill = coefficient)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "lightgreen", high = "purple", mid = "skyblue", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Coefficient Heatmap per Neighborhood (Faceted)",
+       x = "Variable", y = "Neighborhood") +
+  facet_wrap(~ variable, scales = "free_x") +
+  theme(axis.text.x = element_blank())
+
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+library(ggnewscale)
+
+# Filter the variables
+vars <- c("Age", "Bedrooms", "Land.Square.Feet", 
+          "Prior.Tax.Year.Market.Value.Estimate..Land.", "tract_white_perc")
+
+df <- coefficients_df %>%
+  filter(variable %in% vars)
+
+# Set up base plot
+p <- ggplot()
+
+# Loop through each variable, add its own tile layer and fill scale
+for (i in seq_along(vars)) {
+  v <- vars[i]
+  df_var <- df %>% filter(variable == v) %>% mutate(xvar = v)  # Fixed x-position
+  
+  p <- p +
+    geom_tile(data = df_var, aes(x = xvar, y = neighborhood, fill = coefficient)) +
+    scale_fill_gradient2(
+      low = "lightgreen", mid = "skyblue", high = "purple", midpoint = 0,
+      name = v
+    )
+  
+  if (i < length(vars)) {
+    p <- p + ggnewscale::new_scale_fill()
+  }
+}
+
+# Finalize the plot
+p + theme_minimal() +
+  labs(
+    title = "Coefficient Heatmap per Neighborhood (Each Variable Has Own Fill Scale)",
+    x = "Variable", y = "Neighborhood"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
+
+```
+  
+  
+```{r}
+library(ggplot2)
+library(dplyr)
+library(ggnewscale)
+
+# Your variables and manual color scale limits
+vars <- c("Age", "Bedrooms", "Land.Square.Feet", 
+           "tract_white_perc")
+
+# Define custom ranges for each variable
+custom_limits <- list(
+  Age = c(-0.05, 0.05),
+  Bedrooms = c(-0.4, 0.4),
+  `Land.Square.Feet` = c(-0.0025, 0.005),
+  tract_white_perc = c(-8, 10)
+)
+
+# Filter the data
+df <- coefficients_df %>%
+  filter(variable %in% vars)
+
+# Build the plot
+p <- ggplot()
+
+for (i in seq_along(vars)) {
+  v <- vars[i]
+  df_var <- df %>%
+    filter(variable == v) %>%
+    mutate(xvar = v)  # force x axis to align by variable
+  
+  limits_v <- custom_limits[[v]]
+  
+  p <- p +
+    geom_tile(data = df_var, aes(x = xvar, y = neighborhood, fill = coefficient)) +
+    scale_fill_gradient2(
+      low = "lightgreen", mid = "skyblue", high = "purple", midpoint = 0,
+      limits = limits_v,
+      name = v
+    )
+  
+  if (i < length(vars)) {
+    p <- p + ggnewscale::new_scale_fill()
+  }
+}
+
+# Final styling
+p + theme_minimal() +
+  labs(
+    title = "Coefficient Heatmap per Neighborhood",
+    x = "Variable", y = "Neighborhood"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
+
+```
+  
+```{r}
+library(ggplot2)
+library(dplyr)
+library(ggnewscale)
+
+# Your variables and manual color scale limits
+vars <- c("Age", "Bedrooms", "Land.Square.Feet", 
+          "tract_white_perc")
+
+# Define custom ranges for each variable
+custom_limits <- list(
+  Age = c(-0.05, 0.05),
+  Bedrooms = c(-0.4, 0.4),
+  `Land.Square.Feet` = c(-0.0025, 0.005),
+  tract_white_perc = c(-8, 10)
+)
+
+# Filter the data
+df <- coefficients_df %>%
+  filter(variable %in% vars)
+
+# Build the plot
+p <- ggplot()
+
+for (i in seq_along(vars)) {
+  v <- vars[i]
+  df_var <- df %>%
+    filter(variable == v) %>%
+    mutate(xvar = v)  # force x axis to align by variable
+  
+  limits_v <- custom_limits[[v]]
+  
+  p <- p +
+    geom_tile(data = df_var, aes(x = xvar, y = neighborhood, fill = coefficient)) +
+    scale_fill_gradient2(
+      low = "lightgreen", mid = "skyblue", high = "purple", midpoint = 0,
+      limits = limits_v,
+      name = v
+    )
+  
+  if (i < length(vars)) {
+    p <- p + ggnewscale::new_scale_fill()
+  }
+}
+
+# Final styling with bold text
+p + theme_minimal() +
+  labs(
+    title = "Coefficient Heatmap per Neighborhood",
+    x = "Variable", y = "Neighborhood"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold"),
+    axis.title.y = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold"),
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(face = "bold"),
+    legend.position = "right"
+  )
+
+```
+  
+  
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggnewscale)  # <-- this is the key!
+
+# Filter for multiple variables
+vars <- c("Age", "Bedrooms", "Land.Square.Feet")
+coefficients_df1 <- coefficients_df %>%
+  filter(variable %in% vars)
+
+# Base plot
+p <- ggplot()
+
+# Loop through each variable and add its own tile layer and fill scale
+for (v in vars) {
+  df_var <- coefficients_df1 %>% filter(variable == v)
+  
+  p <- p +
+    geom_tile(data = df_var, aes(x = v, y = neighborhood, fill = coefficient)) +
+    scale_fill_gradient2(
+      low = "lightgreen", high = "purple", mid = "skyblue", midpoint = 0,
+      name = v
+    ) +
+    ggnewscale::new_scale_fill()  # resets fill scale for next variable
+}
+
+# Finalize with theme and labels
+p + theme_minimal() +
+  labs(
+    title = "Coefficient Heatmap per Neighborhood",
+    x = "Variable", y = "Neighborhood"
+  )
+
+```
+  
+  
+  
+```{r}
+coefficients_df1 <- coefficients_df %>%
+  filter(variable %in% c("Age", "Bedrooms", "Land.Square.Feet", "Prior.Tax.Year.Market.Value.Estimate..Land.","tract_white_perc")) %>%
+  group_by(variable) %>%
+  mutate(scaled_coeff = scale(coefficient)) %>%
+  ungroup()
+
+ggplot(coefficients_df1, aes(x = variable, y = neighborhood, fill = scaled_coeff)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "lightgreen", high = "purple", mid = "skyblue", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Coefficient Heatmap per Neighborhood (Scaled per Variable)",
+       x = "Variable", y = "Neighborhood")
+
+```
+  
+  
+  
+  
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+coefficients_df1 <- coefficients_df %>%
+   filter(variable %in% c( "Age")) %>%
+  filter(coefficient >= -.1 & coefficient <= .3)
+
+# Heatmap of coefficients
+ggplot(coefficients_df1, aes(x = variable, y = neighborhood, fill = coefficient)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "lightgreen", high = "purple",mid="skyblue", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Coefficient Heatmap per Neighborhood",
+       x = "Variable", y = "Neighborhood")
+ggplot(coefficients_df1, aes(x = coefficient, y = variable, color = neighborhood)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Coefficient Dot Plot per Neighborhood",
+       x = "Coefficient", y = "Variable")   # Hide legend if too many neighborhoods
+
+```
+perfect just change category and 
+coefficients_df1 <- coefficients_df %>%
+   filter(variable %in% c("Bedrooms", "Age", "Land.Square.Feet","Prior.Tax.Year.Market.Value.Estimate..Land.","tract_white_perc")) %>%
+  filter(coefficient >= -1 & coefficient <= 1)
+  
+  DO ONE AT A TIME AND FILTER TO APPROPRIATE RANGE YAYYY
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+coefficients_df1 <- coefficients_df %>%
+  filter(category %in% c( "10ppb-15ppb")) %>%
+   filter(variable %in% c( "Age")) %>%
+  filter(coefficient >= -.1 & coefficient <= .3)
+
+# Heatmap of coefficients
+ggplot(coefficients_df1, aes(x = variable, y = neighborhood, fill = coefficient)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "lightgreen", high = "purple",mid="skyblue", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Coefficient Heatmap per Neighborhood",
+       x = "Variable", y = "Neighborhood")
+ggplot(coefficients_df1, aes(x = coefficient, y = variable, color = neighborhood)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Coefficient Dot Plot per Neighborhood",
+       x = "Coefficient", y = "Variable")   # Hide legend if too many neighborhoods
+
+```
+
+
+```{r}
+library(dplyr)
+library(MASS)  # For polr()
+library(tidyr)
+
+# Run models per neighborhood
+models_per_ward <- merged_data %>%
+  group_split(sec_neigh) %>%
+  setNames(unique(merged_data$sec_neigh)) %>%
+  lapply(function(df) {
+    neigh <- unique(df$sec_neigh)[1]  # Get first unique neighborhood name
+    print(paste("Processing", neigh, "Rows:", nrow(df)))
+    
+    # Skip small groups
+    if (nrow(df) < 5) return(NULL)
+
+    # Convert categorical response
+    df$class_max <- as.ordered(df$class_max)
+
+    # Remove NAs again
+    df <- df %>% drop_na(tract_white_perc, Bedrooms, Land.Square.Feet, 
+                         Prior.Tax.Year.Market.Value.Estimate..Land., Age)
+
+    # Check if df is empty after removing NAs
+    if (nrow(df) == 0) {
+      print(paste("Skipping", neigh, "- no valid rows after drop_na()"))
+      return(NULL)
+    }
+
+    # Try fitting model safely
+    tryCatch({
+      polr(class_max ~ tract_white_perc + Bedrooms + Land.Square.Feet + 
+                   Prior.Tax.Year.Market.Value.Estimate..Land. + Age, 
+           data = df, method = "logistic")
+    }, error = function(e) {
+      print(paste("Error in", neigh))
+      print(e)
+      return(NULL)
+    })
+    
+    
+  })
+
+
+library(ggplot2)
+library(broom)  # For tidy()
+# Ensure that models_per_ward contains only successfully fitted models
+valid_models <- models_per_ward[!sapply(models_per_ward, is.null)]
+
+# Extract coefficients into a data frame
+coef_list <- lapply(names(valid_models), function(neigh) {
+  model <- valid_models[[neigh]]
+  if (is.null(model)) return(NULL)  # Skip failed models
+  
+  tryCatch({
+    coefs <- tidy(model)  # Extract coefficients safely
+    coefs$Neighborhood <- neigh  # Add neighborhood name
+    return(coefs)
+  }, error = function(e) {
+    print(paste("Error extracting coefficients for", neigh))
+    print(e)
+    return(NULL)
+  })
+})
+
+# Combine into one dataframe
+coef_df <- bind_rows(coef_list)
+
+# Check if coef_df is empty before visualization
+if (nrow(coef_df) > 0) {
+  # Heatmap of coefficients
+  ggplot(coef_df, aes(x = term, y = Neighborhood, fill = estimate)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
+    theme_minimal() +
+    labs(title = "Coefficient Heatmap per Neighborhood",
+         x = "Variable", y = "Neighborhood")
+
+  # Dot plot of coefficients
+  ggplot(coef_df, aes(x = estimate, y = term, color = Neighborhood)) +
+    geom_point(alpha = 0.7) +
+    theme_minimal() +
+    labs(title = "Coefficient Dot Plot per Neighborhood",
+         x = "Coefficient", y = "Variable") +
+    theme(legend.position = "none")  # Hide legend if too many neighborhoods
+} else {
+  print("No valid coefficient data to visualize.")
+}
+
+
+```
+
+
+
+
+
+```{r}
+library(dplyr)
+library(broom)  # For extracting coefficients
+
+# Extract coefficients into a data frame
+coef_list <- lapply(names(models_per_ward), function(neigh) {
+  model <- models_per_ward[[neigh]]
+  if (is.null(model)) return(NULL)  # Skip failed models
+  
+  tryCatch({
+    coefs <- tidy(model)  # Extract coefficients
+    coefs$Neighborhood <- neigh  # Add neighborhood name
+    return(coefs)
+  }, error = function(e) {
+    print(paste("Error extracting coefficients for", neigh))
+    print(e)
+    return(NULL)
+  })
+})
+
+# Combine into a single dataframe
+coef_df <- bind_rows(coef_list)
+
+# Check structure
+str(coef_df)
+head(coef_df)
+
+```
+
+
+
+```{r}
+library(dplyr)
+
+# Compute the 90th percentile of Max for each ward
+percentile_90 <- finalidk %>%
+  group_by(ward) %>%
+  summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE))
+
+# View the results
+print(percentile_90)
+
+```
+
+```{r}
+library(dplyr)
+
+# Compute the 90th percentile of Max for each ward
+percentile_90 <- finalgood %>%
+  group_by(property_zip) %>%
+  summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE))
+
+# View the results
+print(percentile_90)
+
+```
+
+
+```{r}
+library(dplyr)
+
+percentile_90 <- finalgood %>%
+  group_by(ward, Address) %>%
+  summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE), .groups = "drop")
+
+# View the results
+print(percentile_90)
+```
+
+```{r}
+library(dplyr)
+
+percentile_90 <- finalgood %>%
+  group_by( Address) %>%
+  summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE), .groups = "drop")
+
+# View the results
+print(percentile_90)
+```
+
+
+```{r}
+submax <- subset(finalidk, Max >= 9)
+submax <- subset(finalidk, Max >= 9)
+submax$binary_max <- ifelse(submax$Max < 15, 0, 1)
+```
+
+
+```{r}
+e = glm(finalidk$binary_max ~ finalidk$`Bedrooms`+finalidk$ward + finalidk$`tract_white_perc` + finalidk$tract_pop + finalidk$Wall.Material + finalidk$Roof.Material + finalidk$ward * finalidk$Age + finalidk$`Near.Major.Road` + finalidk$Prior.Tax.Year.Market.Value.Estimate..Land.+finalidk$ward + finalidk$Land.Square.Feet+finalidk$ward, 
+        family="binomial")
+
+summary(e)
+predicted_probs <- predict(e, type = "response")
+fitted_probs <- fitted(e)
+
+predicted_class <- ifelse(predicted_probs > 0.5, 1, 0)
+predicted_class
+table(predicted_class)
+```
+
+
+```{r}
+ e=glm(submax$binary_max ~ submax$`Bedrooms`*submax$ward + submax$`tract_white_perc` + submax$tract_pop + submax$Wall.Material+submax$Roof.Material+submax$ward * submax$Age  + submax$`Near.Major.Road`+submax$Prior.Tax.Year.Market.Value.Estimate..Land.*submax$ward+submax$Land.Square.Feet*submax$ward, family="binomial" 
+                    )
+
+summary(e)
+predicted_probs <- predict(e, type = "response")
+fitted_probs <- fitted(e)
+
+predicted_class <- ifelse(predicted_probs > 0.5, 1, 0)
+predicted_class
+table(predicted_class)
+```
+
+
+
+```{r}
+submax$binary_max=as.numeric(submax$binary_max)
+
+table(submax$binary_max)
+```
+
+
+
+```{r}
+
+library(dplyr)
+
+# Compute the 90th percentile of Max for each ward
+percentile_90 <- merged_data %>%
+  group_by(sec_neigh) %>%
+  summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE))
+
+# View the results
+print(percentile_90)
+
+
+```
+
+
+
+
+```{r}
+library(boot)
+library(boot)
+
+# Define the bootstrap statistic function
+bootstrap_stratified <- function(data, indices) {
+  # Use the indices provided by boot() to sample data
+  sampled_data <- data[indices, ] %>%
+    group_by(ward) %>%
+    sample_n(size = min(table(data$ward)), replace = TRUE) %>%  # Balance wards
+    ungroup()
+  
+  # Calculate the 90th percentile for each ward
+  percentile_90 <- sampled_data %>%
+    group_by(ward) %>%
+    summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE)) %>%
+    pull(Max_90th)  # Extract the 90th percentile values
+  
+  return(percentile_90)
+}
+
+set.seed(123)  # For reproducibility
+
+# Perform bootstrapping with 200 iterations
+boot_results <- boot(data = finalidk, statistic = bootstrap_stratified, R = 200)
+
+# View the results
+print(boot_results)
+
+library(boot)
+
+# Perform bootstrapping with 200 iterations
+boot_results <- boot(data = finalidk, statistic = bootstrap_stratified, R = 200)
+
+# Compute confidence intervals for the bootstrap estimates
+ci_results <- boot.ci(boot_results, type = c("perc"))
+
+# Print the confidence intervals
+print(ci_results)
+
+```
+
+
+```{r}
+# Extract the bootstrap replicates (results for each ward)
+boot_replicates <- boot_results$t
+
+# Calculate the 95% confidence intervals for each ward (percentile method)
+ci_data <- apply(boot_replicates, 2, function(x) {
+  quantiles <- quantile(x, probs = c(0.025, 0.975))  # 95% CI
+  return(quantiles)
+})
+
+# Convert the CI data to a data frame for plotting
+ci_df <- data.frame(
+  ward = 1:ncol(boot_replicates),  # assuming the number of columns corresponds to wards
+  lower = ci_data[1, ],  # lower bound of CI
+  upper = ci_data[2, ],  # upper bound of CI
+  original = boot_results$t0  # original statistic (e.g., the 90th percentile)
+)
+
+# Plot the confidence intervals
+ggplot(ci_df, aes(x = ward, y = original)) +
+  geom_point(color = "blue") +  # Original statistic as points
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.1, color = "red") +  # Confidence intervals as error bars
+  theme_minimal() +
+  labs(title = "Bootstrap Confidence Intervals for Each Ward",
+       x = "Ward", y = "90th Percentile") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+
+
+```{r}
+library(boot)
+library(dplyr)
+bootstrap_stratified <- function(data, indices) {
+  sampled_data <- data %>%
+    group_by(ward) %>%
+    sample_n(size = min(table(data$ward)), replace = TRUE) %>%  # Balance wards
+    ungroup()
+  
+   return(quantile(sampled_data$Max, 0.90, na.rm = TRUE))  # 90th percentile
+}
+set.seed(123)  # For reproducibility
+boot_results <- boot(data = finalidk, statistic = bootstrap_stratified, R = 400)
+
+# View results
+print(boot_results)
+
+```
+
+
+
+```{r}
+
+
+
+# Compute confidence intervals for the bootstrap estimates
+ci_results <- boot.ci(boot_results, type = c("perc"))
+
+# Print the confidence intervals
+print(ci_results)
+
+```
+
+
+
+
+```{r}
+bootstrap_stratified <- function(data, indices) {
+   # Use the indices provided by boot() to sample data
+  sampled_data <- data[indices, ] %>%
+    group_by(ward) %>%
+    sample_n(size = min(table(data$ward)), replace = TRUE) %>%  # Balance wards
+    ungroup()
+  
+  # Calculate the 90th percentile for each ward
+  percentile_90 <- sampled_data %>%
+    group_by(sec_neigh) %>%
+    summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE)) %>%
+    pull(Max_90th)  # Extract the 90th percentile values
+  
+  return(percentile_90)
+}
+
+set.seed(123)  # For reproducibility
+boot_results <- boot(data = merged_data, statistic = bootstrap_stratified, R = 200)
+
+# View results
+print(boot_results)
+
+library(boot)
+
+
+
+# Compute confidence intervals for the bootstrap estimates
+ci_results <- boot.ci(boot_results, type = c("perc"))
+
+# Print the confidence intervals
+print(ci_results)
+
+
+```
+
+
+
+```{r}
+# Plot the proportions as a bar plot
+ggplot(percentile_90, aes(x = ward, y = Max_90th)) +
+  geom_bar(stat = "identity") +
+  labs(title = "90th Percentile of Max Lead Draw by Neighborhood", 
+       x = "Ward", 
+       y = "90th Percentile") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+
+```{r}
+library(ggplot2)
+library(forcats)  # For reordering factors
+
+ggplot(percentile_90, aes(x = fct_reorder(ward, Max_90th, .desc = F), y = Max_90th)) +
+  geom_bar(stat = "identity", , fill = "skyblue") +
+  geom_hline(yintercept = 15, color = "red", linetype = "dashed", size = 1) +  # Red dashed line at 15
+  geom_hline(yintercept = 10, color = "red", linetype = "dashed", size = 1) +  
+  labs(title = "90th Percentile of Max Lead Draw by Ward", 
+       x = "Ward", 
+       y = "90th Percentile") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(angle = 10, hjust = 1)) + # Rotates x-axis labels for readability
+ coord_flip()
+
+```
+
+```{r}
+ggplot(bootstrap_results, aes(x = t1)) +
+  geom_density(fill = "purple", alpha = 0.5) +
+  labs(title = "Bootstrap Distribution of Max",
+       x = "Bootstrapped Max Value",
+       y = "Density") +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+library(lubridate)
+library(dplyr)
+finalidk <- finalidk %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"),  
+         season = case_when(
+           month(Date) %in% c(12, 1, 2) ~ "Winter",
+           month(Date) %in% c(3, 4, 5)  ~ "Spring",
+           month(Date) %in% c(6, 7, 8)  ~ "Summer",
+           month(Date) %in% c(9, 10, 11) ~ "Fall"
+         ))
+
+
+
+```
+
+
+```{r}
+library(boot)
+library(dplyr)
+
+bootstrap_stratified <- function(data, indices) {
+  
+  sampled_data <- data[indices, ] %>%
+    group_by(ward, season) %>%  
+    sample_n(size = min(table(data$ward, data$season)), replace = TRUE) %>%  
+    ungroup()
+  
+  
+  percentile_90 <- sampled_data %>%
+    group_by(ward) %>%
+    summarise(Max_90th = quantile(Max, 0.90, na.rm = TRUE)) %>%
+    pull(Max_90th)  
+  
+  return(percentile_90)
+}
+
+set.seed(123)  
+
+
+boot_results <- boot(data = finalidk, statistic = bootstrap_stratified, R = 40000)
+
+
+print(boot_results)
+
+```
+
+
+
+
+```{r}
+library(dplyr)
+
+finalidk <- finalidk %>%
+  mutate(Category = if_else(Max != Draw2 & Max != Draw1, "Yes", "No"))
+
+```
+
+
+
+```{r}
+table(finalidk$Category)
+```
+
+```{r}
+merged_data <- merged_data %>%
+  mutate(Category = if_else(Max == Draw3, "Yes", "No"))
+
+```
+
+
+```{r}
+table(merged_data$Category)
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+finalidk$Draw2=as.numeric(finalidk$Draw2)
+
+# Step 1: Compute mean, SD, and SE for each draw directly
+draw_stats <- data.frame(
+  Draw = c("Draw1", "Draw2", "Draw3"),
+  Mean = c(median(finalidk$Draw1, na.rm = TRUE), #mean or median
+           median(finalidk$Draw2, na.rm = TRUE),
+           median(finalidk$Draw3, na.rm = TRUE)),
+  SD = c(sd(finalidk$Draw1, na.rm = TRUE),
+         sd(finalidk$Draw2, na.rm = TRUE),
+         sd(finalidk$Draw3, na.rm = TRUE)),
+  N = c(sum(!is.na(finalidk$Draw1)),
+        sum(!is.na(finalidk$Draw2)),
+        sum(!is.na(finalidk$Draw3)))
+) %>%
+  mutate(SE = SD / sqrt(N),
+         Draw_Num = c(1, 2, 3))  # For numeric x-axis
+
+# Step 2: Plot
+ggplot(draw_stats, aes(x = Draw_Num, y = Mean)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE),
+                width = 0.2, color = "gray40") +
+  scale_x_continuous(breaks = 1:3, labels = draw_stats$Draw) +
+  labs(
+    title = "Average Lead Level by Draw (Final Dataset)",
+    x = "Draw",
+    y = "Average Lead Level (µg/L)"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Make sure draw columns are numeric
+finalidk$Draw1 <- as.numeric(finalidk$Draw1)
+finalidk$Draw2 <- as.numeric(finalidk$Draw2)
+finalidk$Draw3 <- as.numeric(finalidk$Draw3)
+
+# Step 1: Reshape and prep data without pivoting full data
+draw_stats_by_group <- finalidk %>%
+  group_by(MaxSource) %>%
+  summarise(
+    Median_Draw1 = median(Draw1, na.rm = TRUE),
+    Median_Draw2 = median(Draw2, na.rm = TRUE),
+    Median_Draw3 = median(Draw3, na.rm = TRUE),
+    SD1 = sd(Draw1, na.rm = TRUE),
+    SD2 = sd(Draw2, na.rm = TRUE),
+    SD3 = sd(Draw3, na.rm = TRUE),
+    N1 = sum(!is.na(Draw1)),
+    N2 = sum(!is.na(Draw2)),
+    N3 = sum(!is.na(Draw3)),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    SE1 = SD1 / sqrt(N1),
+    SE2 = SD2 / sqrt(N2),
+    SE3 = SD3 / sqrt(N3)
+  ) %>%
+  # Reshape for plotting
+  pivot_longer(
+    cols = starts_with("Median_Draw"),
+    names_to = "Draw",
+    values_to = "Median"
+  ) %>%
+  mutate(
+    Draw_Num = as.numeric(gsub("Median_Draw", "", Draw)),
+    SE = case_when(
+      Draw_Num == 1 ~ SD1 / sqrt(N1),
+      Draw_Num == 2 ~ SD2 / sqrt(N2),
+      Draw_Num == 3 ~ SD3 / sqrt(N3)
+    )
+  )
+
+# Step 2: Plot
+ggplot(draw_stats_by_group, aes(x = Draw_Num, y = Median)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_errorbar(aes(ymin = Median - SE, ymax = Median + SE),
+                width = 0.2, color = "gray40") +
+  scale_x_continuous(breaks = 1:3, labels = c("Draw1", "Draw2", "Draw3")) +
+  labs(
+    title = "Median Lead Level by Draw, Faceted by MaxSource",
+    x = "Draw Number",
+    y = "Median Lead Level (µg/L)"
+  ) +
+  facet_wrap(~ MaxSource) +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+library(dplyr)
+
+finalidk <- finalidk %>%
+  mutate(predicted_draw = case_when(
+    Max < 6 ~ ((100 - 25.9842) / 100) * Max,
+    Max >= 6 & Max < 10 ~ ((100 - 7.41) / 100) * Max,
+    Max >= 10 & Max < 25 ~ ((100 + 7.41) / 100) * Max,
+    Max >= 25 ~ ((100 + 25.98425) / 100) * Max,
+    TRUE ~ NA_real_
+  ))
+
+```
+
+```{r}
+library(ggplot2)
+# Violin plot for 'Max' without grouping
+ggplot(finalidk, aes(x = "", y = predicted_draw)) +
+  geom_violin(fill = "lightblue", color = "darkblue") +
+  labs(title = "Violin Plot of Lead in Water (Max Adjusted)", x = "", y = "Lead Concentration (Max)") +
+  ylim(0, 80) +
+  theme_minimal()
+```
+
+
+```{r}
+
+# Histogram for 'Max'
+ggplot(finalidk, aes(x = predicted_draw)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  xlim(0, 80) +  # Limit x-axis to range 0-200
+  labs(title = "Histogram of Lead in Water (Max)", x = "Lead Concentration (Max)", y = "Frequency") +
+  theme_minimal()
+```
+
+
+
+
+```{r}
+library(ggplot2)
+
+ggplot(finalidk, aes(x = Max)) +
+  geom_histogram(binwidth = 2, fill = "steelblue", color = "white") +
+  geom_vline(xintercept = 10, color = "red", linetype = "dashed", size = 1) +
+  geom_vline(xintercept = 15, color = "red", linetype = "dashed", size = 1) +
+   annotate("text", x = 10, y = 40, label = "10 ppb", color = "red", vjust = -0.5, hjust = -0.1, angle = 90) +
+  annotate("text", x = 15, y = 40, label = "15 ppb", color = "red", vjust = -0.5, hjust = -0.1, angle = 90) +
+  coord_flip() +
+  labs(title = "Histogram of Max Lead Levels",
+       x = "Max Lead Level (ppb)",
+       y = "Count") +
+  xlim(0, 40) +
+  ylim(0, 6500) +
+  theme_minimal()
+
+```
+
+
+
+
+
+
+```{r}
+library(ggplot2)
+library(forcats)  # For reordering factors
+
+ggplot(percentile_90, aes(x = fct_reorder(ward, Max_90th, .desc = F), y = Max_90th)) +
+  geom_bar(stat = "identity", , fill = "skyblue") +
+  geom_hline(yintercept = 15, color = "red", linetype = "dashed", size = 1) +  # Red dashed line at 15
+  geom_hline(yintercept = 10, color = "red", linetype = "dashed", size = 1) +  
+  labs(title = "90th Percentile of Max Lead Draw by Ward", 
+       x = "Ward", 
+       y = "90th Percentile") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(angle = 10, hjust = 1)) + # Rotates x-axis labels for readability
+ coord_flip() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold"),
+    axis.title.y = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold"),
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(face = "bold"),
+    legend.position = "right"
+  )
+
+```
+
+
+
+```{r}
+library(dplyr)
+library(purrr)
+
+# Function to compute bootstrap SE for a ward
+bootstrap_se <- function(data, n_boot = 1000) {
+  boot_vals <- replicate(n_boot, {
+    sample_data <- sample(data$Max, replace = TRUE)
+    quantile(sample_data, 0.90, na.rm = TRUE)
+  })
+  return(sd(boot_vals, na.rm = TRUE))
+}
+
+# Apply to each ward
+percentile_se <- finalidk %>%
+  group_by(ward) %>%
+  summarise(
+    Max_90th = quantile(Max, 0.90, na.rm = TRUE),
+    SE_90th = bootstrap_se(cur_data())
+  )
+
+```
+
+
+```{r}
+library(ggplot2)
+
+ggplot(percentile_se, aes(x = factor(ward), y = Max_90th)) +
+  geom_col(fill = "steelblue") +
+  geom_errorbar(aes(ymin = Max_90th - SE_90th, ymax = Max_90th + SE_90th),
+                width = 0.3, color = "black") +
+  labs(title = "90th Percentile of Max by Ward with SE",
+       x = "Ward", y = "90th Percentile ± SE") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+library(dplyr)
+
+# Function to compute 90th percentile and SE using bootstrap
+bootstrap_percentile_se_ci <- function(data, n_boot = 1000) {
+  boot_vals <- replicate(n_boot, {
+    sample_data <- sample(data$Max, replace = TRUE)
+    quantile(sample_data, 0.90, na.rm = TRUE)
+  })
+  
+  est <- quantile(data$Max, 0.90, na.rm = TRUE)
+  se <- sd(boot_vals, na.rm = TRUE)
+  ci_lower <- est - 1.96 * se
+  ci_upper <- est + 1.96 * se
+  
+  return(tibble(Max_90th = est, SE = se, CI_lower = ci_lower, CI_upper = ci_upper))
+}
+
+# Apply to each ward
+percentile_ci <- finalidk %>%
+  group_by(ward) %>%
+  group_modify(~ bootstrap_percentile_se_ci(.x))
+
+```
+
+
+
+```{r}
+library(ggplot2)
+library(forecast)
+
+ggplot(percentile_ci, aes(x = fct_reorder(ward, Max_90th, .desc = F), y = Max_90th)) +
+  geom_col(fill = "steelblue") +
+  geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper), width = 0.3, color = "black") +
+  labs(title = "90th Percentile of Max by Ward with 95% CI (based on SE)",
+       x = "Ward", y = "90th Percentile (with CI)") +
+   geom_hline(yintercept = 15, color = "red", linetype = "dashed", size = 1) +  # Red dashed line at 15
+  geom_hline(yintercept = 10, color = "red", linetype = "dashed", size = 1) + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+   coord_flip() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold"),
+    axis.title.y = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold"),
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(face = "bold"),
+    legend.position = "right"
+  )
+
+```
+
+
+
+```{r}
+library(dplyr)
+library(purrr)
+
+# Function to compute bootstrap 95% CI for a ward
+bootstrap_ci <- function(data, n_boot = 8000) {
+  boot_vals <- replicate(n_boot, {
+    sample_data <- sample(data$Max, replace = TRUE)
+    quantile(sample_data, 0.90, na.rm = TRUE)
+  })
+  quantile(boot_vals, probs = c(0.025, 0.975), na.rm = TRUE)
+}
+
+# Apply to each ward
+percentile_ci <- finalidk %>%
+  group_by(ward) %>%
+  summarise(
+    Max_90th = quantile(Max, 0.90, na.rm = TRUE),
+    CI_lower = bootstrap_ci(cur_data())[1],
+    CI_upper = bootstrap_ci(cur_data())[2]
+  )
+
+```
+
+
+
+```{r}
+library(ggplot2)
+library(forecast)
+
+ggplot(percentile_ci, aes(x = fct_reorder(ward, Max_90th, .desc = F), y = Max_90th)) +
+  geom_col(fill = "skyblue") +
+  geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper),
+                width = 0.3, color = "black") +
+   geom_hline(yintercept = 15, color = "red", linetype = "dashed", size = 1) +  # Red dashed line at 15
+  geom_hline(yintercept = 10, color = "red", linetype = "dashed", size = 1) +
+   annotate("text", x = 1, y = 15, label = "15 ppb", color = "red", vjust = -0.5, fontface = "bold") +
+  annotate("text", x = 1, y = 10, label = "10 ppb", color = "red", vjust = -0.5, fontface = "bold") +
+  labs(title = "90th Percentile of Max by Ward with 95% CI",
+       x = "Ward", y = "90th Percentile (CI)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  coord_flip() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold"),
+    axis.title.y = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold"),
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(face = "bold"),
+    legend.position = "right"
+  )
+
+
+```
+
