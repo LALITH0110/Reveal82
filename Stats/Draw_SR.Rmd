@@ -1,0 +1,216 @@
+---
+title: "SpatialReg"
+author: "Eileen Garay"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+boots_results <- read.csv("C:/Users/evett/Downloads/school_work/IPRO/boots 1.csv")
+```
+
+
+```{r}
+library(dplyr)
+library(stringr)
+
+boots_results <- boots_results %>%
+  mutate(Sample.Date = str_trim(Sample.Date)) %>%       
+  mutate(Sample.Date = na_if(Sample.Date, "")) %>%       
+  filter(!is.na(Sample.Date))  %>%
+  filter(!is.na(Max))
+```
+
+```{r}
+library(sf)
+library(spdep)
+library(tidyverse)
+library(spatialreg)
+library(readxl)
+
+# Load neighborhood polygon data
+tract_sf <- st_read("C:/Users/evett/Downloads/school_work/IPRO/Chi_nbhd.shp")
+
+# Ensure valid geometries
+chicago_sf <- st_make_valid(tract_sf)
+
+# Create neighborhood adjacency matrix
+nb <- poly2nb(chicago_sf, queen = TRUE)
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+```
+
+
+```{r}
+boots_results <- boots_results%>%
+  drop_na(longitude, latitude)
+
+boots_results <- boots_results %>%
+  mutate(Sample.Date = as.Date(as.character(Sample.Date), format = "%m/%d/%y"),  
+      season_sampled = case_when(
+      month(Sample.Date) %in% c(12, 1, 2) ~ "Winter",
+      month(Sample.Date) %in% c(3, 4, 5)  ~ "Spring",
+      month(Sample.Date) %in% c(6, 7, 8)  ~ "Summer",
+      month(Sample.Date) %in% c(9, 10, 11) ~ "Fall",
+    ))
+```
+
+
+```{r}
+predictors_sf <- st_as_sf(boots_results, coords = c("longitude", "latitude"), crs = 4326)
+```
+
+
+```{r}
+# Merge spatial predictors with neighborhood polygons
+merged_data <- st_join(predictors_sf, chicago_sf, join = st_within)
+```
+
+
+```{r}
+merged_data$Max <- as.numeric(merged_data$Max)
+merged_data$X1st.Draw <- as.numeric(merged_data$X1st.Draw)
+merged_data$X2.3.Min <- as.numeric(merged_data$X2.3.Min)
+merged_data$X5.Min <- as.numeric(merged_data$X5.Min)
+```
+
+before this I need to group them by season ###
+```{r}
+merged_data <- merged_data %>%
+  st_drop_geometry() %>%  # Drop the POINT geometries
+  group_by(pri_neigh) %>%
+  summarise(
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE))
+ ) %>%
+  left_join(select(chicago_sf, pri_neigh, geometry), by = "pri_neigh") %>%  
+  # Reattach polygon geometries
+  st_as_sf()  # Convert back to sf
+
+# Ensure geometries are MULTIPOLYGON
+merged_data <- st_cast(merged_data, "MULTIPOLYGON")
+```
+
+```{r}
+merged_data <- merged_data %>%
+  filter(!st_is_empty(geometry)) %>%  # Remove rows where geometry is missing
+  st_cast("MULTIPOLYGON")  # Ensure correct geometry type
+
+nb <- poly2nb(merged_data, queen = TRUE)
+
+weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
+
+```
+
+```{r}
+ols_x1st <- lm(X1st.Draw ~ tract_white_perc + Age + Building_Square_Feet, data = merged_data)
+summary(ols_x1st)
+ols_x2nd <- lm(X2.3.Min ~ tract_white_perc + ward + senate_dist, data = merged_data)
+summary(ols_x1st)
+ols_x5th <- lm(X5.Min ~ tract_white_perc + ward + senate_dist, data = merged_data)
+summary(ols_x5th)
+```
+
+
+```{r}
+X1st_SAR_Mod <- lagsarlm(X1st.Draw ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X1st_SAR_Mod)
+X1st_SEM_Mod <- errorsarlm(X1st.Draw ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X1st_SEM_Mod)
+X1st_SDM_Mod <- lagsarlm(X1st.Draw ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X1st_SDM_Mod)
+```
+```{r}
+X2nd_SAR_Mod <- lagsarlm(X2.3.Min ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X2nd_SAR_Mod)
+X2nd_SEM_Mod <- errorsarlm(X2.3.Min ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X2nd_SEM_Mod)
+X2nd_SDM_Mod <- lagsarlm(X2.3.Min ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X2nd_SDM_Mod)
+```
+
+```{r}
+X5th_SAR_Mod <- lagsarlm(X5.Min ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X5th_SAR_Mod)
+X5th_SEM_Mod <- errorsarlm(X5.Min ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X5th_SEM_Mod)
+X5th_SDM_Mod <- lagsarlm(X5.Min ~ tract_white_perc + ward + senate_dist, data = merged_data, listw = weights)
+summary(X5th_SDM_Mod)
+```
+
+
+```{r}
+# Load the libraries
+library(spdep)
+library(sf)         
+library(tmap)       
+library(ggplot2)    
+library(RColorBrewer) 
+
+chicago_sf <- st_read("C:/Users/evett/Downloads/school_work/IPRO/Chi_nbhd.shp")
+
+# Ensure valid geometries
+chicago_sf <- st_make_valid(chicago_sf)
+
+merged_sf <- st_as_sf(merged_data, coords = c("longitude", "latitude"), crs = 4326)
+
+merged_sf <- st_transform(merged_sf, crs = st_crs(chicago_sf))
+
+nb_merged <- poly2nb(merged_sf, queen = TRUE)
+weights_merged <- nb2listw(nb_merged, style = "W", zero.policy = TRUE)
+```
+
+```{r}
+#Predict to the spatial data
+merged_data$X1st_SDM_pred <- as.numeric(predict(X1st_SDM_Mod, newdata = merged_sf, listw = weights_merged))
+merged_data$X2nd_SDM_pred <- as.numeric(predict(X2nd_SDM_Mod, newdata = merged_sf, listw = weights_merged))
+merged_data$X5th_SDM_pred <- as.numeric(predict(X5th_SDM_Mod, newdata = merged_sf, listw = weights_merged))
+```
+
+```{r}
+library(sf)
+merged_sf <- st_as_sf(merged_data, coords = c("longitude", "latitude"), crs = 4326)
+```
+
+
+```{r}
+# SDM Predictions Map
+library(spData)
+library(tmap)
+
+tmap_mode("view")
+
+tm_shape(merged_sf) +
+  tm_polygons("X1st_SDM_pred") +
+  tm_borders() +  
+  tm_layout(legend.outside = TRUE) +  
+  tm_title("SDM Model Predictions")  
+```
+
+```{r}
+# SDM Predictions Map
+library(spData)
+library(tmap)
+
+tmap_mode("view")
+
+tm_shape(merged_sf) +
+  tm_polygons("X2nd_SDM_pred") +
+  tm_borders() +  
+  tm_layout(legend.outside = TRUE) +  
+  tm_title("SDM Model Predictions")  
+```
+
+
+```{r}
+# SDM Predictions Map
+library(spData)
+library(tmap)
+
+tmap_mode("view")
+
+tm_shape(merged_sf) +
+  tm_polygons("X5th_SDM_pred") +
+  tm_borders() +  
+  tm_layout(legend.outside = TRUE) +  
+  tm_title("SDM Model Predictions")  
+```
+
