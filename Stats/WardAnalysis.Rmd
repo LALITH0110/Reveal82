@@ -1,0 +1,2225 @@
+---
+title: "Finaltry"
+output: html_document
+date: "2025-02-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+
+```{r}
+library(ggplot2)
+data=read.csv("C:/Users/vreid/Downloads/Results(Initial) (2).csv")
+
+data[data=="6 Minute"]=NA
+data[data=="1st Draw"]=NA
+data[data=="2-3 Minute"]=NA
+data[data=="5 Minute"]=NA
+data[data=="See Follow-Up Sequential Sampling Table for Results"]=NA
+data[data=="Customer declined further testing"]=NA
+data[data=="< 1"]=0.75
+data[data=="< .5"]=0.25
+data[data=="< 1.0"]=0.75
+data[data=="< 0.5"]=0.25
+data[data=="<1"]=0.75
+data[data=="<.5"]=0.25
+data[data=="<1.0"]=0.75
+data[data=="<0.5"]=0.25
+View(data)
+data = as.data.frame(lapply(data[3:5], function(x) 
+   as.numeric(x)))
+data$max= apply(data, 1, max, na.rm=T)
+View(data)
+
+data3=subset(data, max >= 0 & max <= 8000)
+boxplot(data3$max)
+
+data2=subset(data, max >= 0 & max <= 40)
+ggplot(data2, aes(x = max)) +
+  geom_histogram(binwidth = 1.5, aes(fill = after_stat(count))) +
+   scale_fill_gradient(low = "red", high = "black")  +
+  geom_vline(xintercept = 5, linetype = "dashed", color = "blue", size = 1) +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "green", size = 1) + 
+   labs(title = "Histogram of Lead Levels in Chicago Water Tests",
+    x = "Lead Levels",
+    y = "Frequency") +
+  theme_minimal()+
+coord_flip()
+
+quantile(data2$max,probs=.9,na.rm=T)
+```
+
+```{r}
+final=read.csv("C:/Users/vreid/Downloads/Finaldataset3.csv")
+final$Max[final$Max == -Inf] <- NA
+final$Max[final$Max == 0] <- NA
+final$Max=as.numeric(final$Max)
+final$ward = as.character(final$ward)
+max(table(final$ward))
+barplot(table(final$ward))
+(table(final$ward))
+```
+
+
+```{r}
+final_balanced= final%>% 
+  group_by(final$ward)%>%
+  slice_sample(n=500, replace=T)%>%
+  ungroup()
+View(final_balanced)
+```
+
+
+
+
+hi again
+
+
+```{r}
+
+quantile(final$max, probs=.9, na.rm=T)
+quantile(final_balanced$max,probs=.9,na.rm=T)
+
+
+```
+
+
+```{r}
+final$binary_max <- ifelse(final$Max < 10, 0, 1)
+
+
+```
+
+
+```{r}
+final$ward=factor(final$ward)
+final$ward <- relevel(final$ward, ref = "25")  
+f=glm(final$binary_max~final$ward, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+
+
+```{r}
+f=glm(final$binary_max~final$tract_white_perc, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+
+```{r}
+
+
+j=lm(final$Max~final$ward)
+summary(j)
+```
+
+
+```{r}
+
+finalidk=read.csv("C:/Users/vreid/Downloads/Finaldatasetidk.csv")
+finalidk$Max[finalidk$Max == -Inf] <- NA
+finalidk$Max[finalidk$Max == 0] <- NA
+finalidk$Max=as.numeric(final$Max)
+finalidk$ward = as.character(finalidk$ward)
+max(table(finalidk$ward))
+barplot(table(finalidk$ward))
+finalidk$property_zip <- sub("-.*", "", finalidk$property_zip)
+finalidk$property_zip[finalidk$property_zip == 0] <- NA
+finalidk$property_zip = as.character(finalidk$property_zip)
+barplot(table(finalidk$property_zip))
+(table(finalidk$property_zip))
+barplot(table(finalidk$township_name))
+(table(finalidk$township_name))
+barplot(table(finalidk$school_elem_district))
+(table(finalidk$school_elem_district))
+```
+
+
+
+```{r}
+
+finalidk$binary_max <- ifelse(finalidk$Max < 10, 0, 1)
+
+f=glm(finalidk$binary_max~finalidk$Age, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+
+
+f=glm(finalidk$binary_max~finalidk$Age*finalidk$tract_white_perc, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$Rooms, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$Bedrooms, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+
+f=glm(finalidk$binary_max~finalidk$Bedrooms+finalidk$Rooms, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$Porch, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$Prior.Tax.Year.Market.Value.Estimate..Building., family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+```
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$township_name, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$tract_pop, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$property_zip, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k)
+```
+
+
+
+```{r}
+h=summary(lm(finalidk$Max~finalidk$Bedrooms))
+h
+g=summary(lm(finalidk$Max~finalidk$tract_white_perc))
+g
+summary(lm(finalidk$Max~finalidk$Rooms))
+
+```
+
+
+```{r}
+g=summary(glm(finalgood$binary_max~finalidk$tract_white_perc*finalidk$Age, family=binomial(link = "logit")))
+g
+g=summary(lm(finalidk$Max~finalidk$Rooms*finalidk$Bedrooms))
+g
+```
+
+
+```{r}
+h=summary(lm(finalidk$Max~finalidk$Age))
+h
+```
+
+```{r}
+
+f=glm(finalidk$binary_max~finalidk$Land.Square.Feet, family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+```
+
+
+```{r}
+summary(lm(finalidk$Max~finalidk$Land.Square.Feet))
+```
+
+
+```{r}
+summary(lm(finalidk$Max~finalidk$tract_pop))
+```
+
+
+
+```{r}
+library(readxl)
+finalgood=read_xlsx("C:/Users/vreid/Downloads/finaltrygood.xlsx")
+
+```
+
+
+```{r}
+finalgood$Max=as.numeric(finalgood$Max)
+finalgood$ward = as.character(finalgood$ward)
+finalgood$Max[finalgood$Max == -Inf] <- NA
+finalgood$Max[finalgood$Max == 0] <- NA
+finalgood$binary_max <- ifelse(finalgood$Max < 10, 0, 1)
+
+```
+
+
+```{r}
+library(nnet)
+finalgood$`Private Service Line Material` <- factor(finalgood$`Private Service Line Material`)
+finalgood$`Private Service Line Material` <- relevel(finalgood$`Private Service Line Material`, ref = "NOT LEAD")
+finalgood$private=finalgood$`Private Service Line Material`
+finalgood$public=finalgood$`Public Service Line Material`
+finalgood$private <- factor(finalgood$private)
+finalgood$private <- relevel(finalgood$private, ref = "NOT LEAD")
+f=multinom(finalgood$private~finalgood$Rooms)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+
+```
+
+
+```{r}
+finalgood$public <- factor(finalgood$public)
+finalgood$public <- relevel(finalgood$public, ref = "NOT LEAD")
+f=multinom(finalgood$public~finalgood$ward)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+
+```
+
+```{r}
+
+f=multinom(finalgood$private~finalgood$Bedrooms)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+```
+
+
+
+```{r}
+f=multinom(finalgood$public~finalgood$Rooms)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+```
+
+```{r}
+f=multinom(finalgood$public~finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+```
+
+```{r}
+
+f=multinom(finalgood$private~finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+```
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$private~finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+
+```{r}
+finalgood$property_zip <- sub("-.*", "", finalgood$property_zip)
+```
+
+
+```{r}
+
+f=multinom(finalgood$private~finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+```{r}
+
+f=multinom(finalgood$private~finalgood$township_name)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$private~finalgood$property_zip)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$property_zip)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$township_name)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+```{r}
+library(nnet)
+f=multinom(finalgood$public~finalgood$Age*finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
+
+CORRELATION OR VARIBLES I LIKE LOOKING AT SEE NOTES
+```{r}
+cor(finalgood$`Land Square Feet`, finalgood$`Prior Tax Year Market Value Estimate (Land)`, use = "complete.obs")
+
+```
+
+FOR PCA OF VARIABLES I FIND SIGNIFICANT
+```{r}
+# Load dataset
+chicago_data <- read_csv("path/to/data.csv")
+
+# Select predictors (excluding outcome variable Y)
+predictors <- chicago_data %>%
+  select(-Y)  # Remove outcome variable
+
+# Standardize predictors (important for PCA)
+predictors_scaled <- scale(predictors)
+
+# Check structure
+str(predictors_scaled)
+pca_model <- prcomp(predictors_scaled, center = TRUE, scale. = TRUE)
+summary(pca_model)  # View variance explained by each component
+
+# Scree plot to decide how many PCs to keep
+plot(pca_model, type = "l")
+# Get PCA-transformed predictors
+pca_predictors <- as.data.frame(pca_model$x)
+
+# Add outcome variable back
+pca_data <- cbind(Y = chicago_data$Y, pca_predictors)
+lm_pca <- lm(Y ~ PC1 + PC2 + PC3, data = pca_data)  # Adjust based on scree plot
+summary(lm_pca)
+
+```
+
+
+
+```{r}
+finalidk$binary_max <- ifelse(finalidk$Max < 10, 0, 1)
+```
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$Age+finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Age+finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$Age*finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Age*finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Age*finalgood$tract_white_perc,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Age+finalgood$tract_white_perc,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$Age+finalgood$tract_white_perc )
+summary(f)
+
+f=glm(finalidk$Max~finalgood$Age*finalgood$tract_white_perc )
+summary(f)
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$Rooms+finalgood$Bedrooms)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Rooms+finalgood$Bedrooms)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$Rooms*finalgood$Bedrooms)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Rooms*finalgood$Bedrooms)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms*finalgood$Bedrooms,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms+finalgood$Bedrooms,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$Rooms+finalgood$Bedrooms )
+summary(f)
+
+f=glm(finalidk$Max~finalgood$Rooms*finalgood$Bedrooms )
+summary(f)
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)` )
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+```
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`+finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`+finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`*finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`*finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`+finalgood$tract_white_perc,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`+finalgood$tract_white_perc,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`*finalgood$tract_white_perc,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`+finalgood$tract_white_perc,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`+finalgood$tract_white_perc)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`*finalgood$tract_white_perc)
+summary(f)
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`+finalgood$`Prior Tax Year Market Value Estimate (Land)` )
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+```
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$tract_white_perc*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$tract_white_perc*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$tract_white_perc*finalgood$`Prior Tax Year Market Value Estimate (Land)`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)` )
+summary(f)
+
+f=glm(finalidk$Max~finalgood$tract_white_perc*finalgood$`Prior Tax Year Market Value Estimate (Land)`)
+summary(f)
+```
+
+
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet`+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet`*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`*finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`+finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`*finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet`+finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`+finalgood$Age)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet`*finalgood$Age)
+summary(f)
+```
+
+
+```{r}
+
+
+f=multinom(finalgood$public~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$Age)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$Age)
+summary(f)
+
+
+```
+
+
+
+```{r}
+
+
+
+f=multinom(finalgood$public~finalgood$tract_pop+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~ffinalgood$tract_pop+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$tract_pop*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$tract_pop*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$tract_pop+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$tract_pop*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+
+f=glm(finalidk$binary_max~finalgood$tract_pop+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$tract_pop*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$tract_pop+finalgood$Age)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$tract_pop*finalgood$Age)
+summary(f)
+
+
+
+```
+
+
+```{r}
+
+
+f=multinom(finalgood$public~finalgood$Rooms+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Rooms+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$Rooms*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Rooms*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$Rooms+finalgood$Age)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$Rooms*finalgood$Age)
+summary(f)
+
+```
+
+
+```{r}
+
+
+
+f=multinom(finalgood$public~finalgood$Rooms+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Rooms+finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$public~finalgood$Rooms*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=multinom(finalgood$private~finalgood$Rooms*finalgood$Age)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms+finalgood$Age,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+
+f=glm(finalidk$binary_max~finalgood$Rooms*finalgood$Age,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$Rooms+finalgood$Age)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$Rooms*finalgood$Age)
+summary(f)
+
+
+
+```
+
+
+```{r}
+f=multinom(finalgood$public~finalgood$`Land Square Feet (Land)`+finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet (Land)`+finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet (Land)`*finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet (Land)`*finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`+finalgood$tract_pop,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`*finalgood$tract_pop,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`+finalgood$tract_pop,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`*finalgood$tract_pop,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet (Land)`+finalgood$tract_pop)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet (Land)`*finalgood$tract_pop)
+summary(f)
+
+```
+
+
+
+```{r}
+f=multinom(finalgood$public~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$public~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$tract_pop)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$tract_pop,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$tract_pop,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$tract_pop,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$tract_pop,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$tract_pop)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$tract_pop)
+summary(f)
+
+
+```
+
+
+```{r}
+f=multinom(finalgood$public~finalgood$`Land Square Feet (Land)`+finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet (Land)`+finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$public~finalgood$`Land Square Feet (Land)`*finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Land Square Feet (Land)`*finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`+finalgood$`Near Major Road`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`*finalgood$`Near Major Road`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`+finalgood$`Near Major Road`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Land Square Feet (Land)`*finalgood$`Near Major Road`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet (Land)`+finalgood$`Near Major Road`)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Land Square Feet (Land)`*finalgood$`Near Major Road`)
+summary(f)
+
+```
+
+
+```{r}
+f=multinom(finalgood$public~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$public~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Near Major Road`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$`Near Major Road`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Near Major Road`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$`Near Major Road`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Near Major Road`)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$`Prior Tax Year Market Value Estimate (Land)`*finalgood$`Near Major Road`)
+summary(f)
+
+```
+
+
+
+```{r}
+f=multinom(finalgood$public~finalgood$Age+finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$Age+finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$public~finalgood$Age*finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$Age*finalgood$`Near Major Road`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$Age+finalgood$`Near Major Road`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$Age*finalgood$`Near Major Road`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$Age+finalgood$`Near Major Road`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$Age*finalgood$`Near Major Road`,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$Age+finalgood$`Near Major Road`)
+summary(f)
+
+f=glm(finalidk$Max~finalgood$Age*finalgood$`Near Major Road`)
+summary(f)
+
+```
+
+
+```{r}
+f=multinom(finalgood$public~finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$public~(finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`)^2)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=multinom(finalgood$private~(finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`)^2)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`,  family=binomial(link = "logit"))
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$binary_max~(finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`)^2,  family=binomial(link = "logit") )
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+
+f=glm(finalidk$Max~finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`)
+summary(f)
+
+f=glm(finalidk$Max~(finalgood$Age+finalgood$tract_pop+finalgood$Rooms+finalgood$Bedrooms+finalgood$`Near Major Road`+finalgood$tract_white_perc+finalgood$`Prior Tax Year Market Value Estimate (Land)`+finalgood$`Land Square Feet (Land)`)^2)
+summary(f)
+
+```
+
+
+
+fix this!!
+```{r}
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms", "Near Major Road", "tract_white_perc", "Prior Tax Year Market Value Estimate (Land)", "Land Square Feet", "Near Major Road")
+
+all_models <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$public ~", paste(paste0("finalgood$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models)
+
+all_models_private <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$private ~", paste(paste0("finalgood$`", subset, "`"), collapse = " + "))
+    model <- multinom(as.formula(formula_str))
+    all_models_private[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_private)
+
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet", "Near.Major.Road")
+
+all_models_logit <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_logit)
+
+ all_models_lin <- list()
+
+for (i in 1:length(variables)) {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$Max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " + "))
+    model <- lm(as.formula(formula_str))
+    all_models_lin[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_lin)
+
+```
+
+
+```{r}
+
+#for final idk
+variables <- c("Age", "tract_pop", "Rooms", "Bedrooms",  "tract_white_perc", "Prior.Tax.Year.Market.Value.Estimate..Land.", "Land.Square.Feet")
+
+all_models <- list()
+
+for (i in 1:length(variables)) #change 2 {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$public ~", paste(paste0("finalgood$`", subset, "`"), collapse = " * "))
+    model <- multinom(as.formula(formula_str))
+    all_models[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models)
+
+all_models_private <- list()
+
+for (i in 1:length(variables)) #change 2 if needed {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalgood$private ~", paste(paste0("finalgood$`", subset, "`"), collapse = " * "))
+    model <- multinom(as.formula(formula_str))
+    all_models_private[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_private)
+
+all_models_logit <- list()
+
+for (i in 1:length(variables)) #change to 2 if need {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- glm(as.formula(formula_str), family=binomial(link = "logit"))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_logit)
+
+
+
+for (i in 1:length(variables)) #change 2 {
+  subsets <- combn(variables, i, simplify = FALSE)
+  for (subset in subsets) {
+    formula_str <- paste("finalidk$binary_max ~", paste(paste0("finalidk$`", subset, "`"), collapse = " * "))
+    model <- lm(as.formula(formula_str))
+    all_models_logit[[formula_str]] <- summary(model)
+  }
+}
+
+print(all_models_lin)
+```
+
+
+
+LOG MULTINOM AND LINEAR FOR JOINGING VARS TOGETHER SEE LOGBOOK FOR WHAT I WANT TO RUN
+
+```{r}
+
+f=multinom(finalgood$public~finalgood$Age*finalgood$tract_white_perc)
+summary(f)
+k=exp(coef(f))
+k
+k-1
+k/(1+k) 
+z_values <- summary(f)$coefficients / summary(f)$standard.errors
+z_values
+k-1
+```
+
