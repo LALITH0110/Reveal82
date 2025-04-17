@@ -200,105 +200,228 @@ AIC(Public_ols_model)
 AIC(Private_ols_model)
 ```
 
+```{r}
+set.seed(123)
+
+# Set of allowed predictors
+predictor_vars <- setdiff(names(merged_data), c("logitpub", "logitpriv", "geometry", "pri_neigh", "y", "y1", "Private.Service.Line.Material", "Public.Service.Line.Material", "indicator_has_latlon", "sli_count", "shape_area", "shape_len"))
+
+model_sig_results <- list()
+model_count <- 0
+attempts <- 0
+
+while (model_count < 100 && attempts < 500) {
+  attempts <- attempts + 1
+  
+  num_vars <- sample(2:7, 1)
+  selected_vars <- sample(predictor_vars, num_vars)
+  formula_str <- paste("logitpub ~", paste(selected_vars, collapse = " + "))
+  
+  suppressWarnings(
+    tryCatch({
+      model <- lagsarlm(as.formula(formula_str), data = merged_data, listw = weights, Durbin = TRUE)
+      model_sum <- summary(model)
+      
+      coef_table <- model_sum$Coef
+      row_names <- rownames(coef_table)
+      
+      # Remove intercept & lag terms
+      is_valid <- !(grepl("Intercept", row_names) | grepl("^lag\\.", row_names))
+      valid_pvals <- coef_table[is_valid, "Pr(>|z|)"]
+      
+      sig_count <- sum(valid_pvals < 0.01)
+      
+      if (sig_count >= 2) {
+        model_sig_results[[formula_str]] <- sig_count
+        model_count <- model_count + 1
+      }
+    }, error = function(e) {})
+  )
+}
+
+# Sort by number of significant predictors (descending)
+sorted_models <- sort(unlist(model_sig_results), decreasing = TRUE)
+
+# Print the formula and number of sig predictors
+#print(noquote(formatC(names(sorted_models), width = 100, flag = "-")))
+print(sorted_models)
+
+```
+
+
+```{r}
+set.seed(123)
+
+# Set of allowed predictors
+predictor_vars <- setdiff(names(merged_data), c("logitpub", "logitpriv", "geometry", "pri_neigh", "y", "y1", "Private.Service.Line.Material", "Public.Service.Line.Material", "indicator_has_latlon", "sli_count", "shape_area", "shape_len"))
+
+model_sig_results <- list()
+model_count <- 0
+attempts <- 0
+
+while (model_count < 100 && attempts < 500) {
+  attempts <- attempts + 1
+  
+  num_vars <- sample(2:7, 1)
+  selected_vars <- sample(predictor_vars, num_vars)
+  formula_str <- paste("logitpriv ~", paste(selected_vars, collapse = " + "))
+  
+  suppressWarnings(
+    tryCatch({
+      model <- lagsarlm(as.formula(formula_str), data = merged_data, listw = weights, Durbin = TRUE)
+      model_sum <- summary(model)
+      
+      coef_table <- model_sum$Coef
+      row_names <- rownames(coef_table)
+      
+      # Remove intercept & lag terms
+      is_valid <- !(grepl("Intercept", row_names) | grepl("^lag\\.", row_names))
+      valid_pvals <- coef_table[is_valid, "Pr(>|z|)"]
+      
+      sig_count <- sum(valid_pvals < 0.01)
+      
+      if (sig_count >= 2) {
+        model_sig_results[[formula_str]] <- sig_count
+        model_count <- model_count + 1
+      }
+    }, error = function(e) {})
+  )
+}
+
+# Sort by number of significant predictors (descending)
+sorted_models <- sort(unlist(model_sig_results), decreasing = TRUE)
+
+# Print the formula and number of sig predictors
+#print(noquote(formatC(names(sorted_models), width = 100, flag = "-")))
+print(sorted_models)
+```
+
+
+
 Public
 ```{r}
-set.seed(123)  # for reproducibility
+set.seed(123)
 
-# Exclude both response and 'logitpriv' from predictors
+# Exclude response and unwanted variables
 predictor_vars <- setdiff(names(merged_data), c("logitpub", "logitpriv", "geometry", "pri_neigh", "y", "y1"))
 
+# Storage
 all_models_lm <- list()
 aic_values <- numeric()
+failed_models <- list()
 
-# Generate 100 models with random combinations of 5 predictors
-for (i in 1:100) {
-  # Randomly select predictors
-  random_vars <- sample(predictor_vars, 3, replace = FALSE)
+i <- 0
+model_attempts <- 0
+
+while (i < 100 && model_attempts < 500) {
+  model_attempts <- model_attempts + 1
   
-  # Build formula
+  # Randomly select 1–5 predictors
+  num_vars <- sample(2:7, 1)
+  random_vars <- sample(predictor_vars, num_vars, replace = FALSE)
   formula_str <- paste("logitpub ~", paste(random_vars, collapse = " + "))
   
-  # Fit the model
-  model <- lm(as.formula(formula_str), data = merged_data)
-  
-  # Store the model summary and AIC
-  all_models_lm[[formula_str]] <- summary(model)
-  aic_values[formula_str] <- AIC(model)
+  suppressWarnings(
+    tryCatch({
+      #Change the type of models
+      model <- lagsarlm(as.formula(formula_str), data = merged_data, listw = weights, Durbin = TRUE)
+      
+      # Skip numerical Hessian models
+      if (!is.null(model$ase) && model$ase == "Numerical Hessian used") {
+        failed_models[[formula_str]] <- "Numerical Hessian used"
+      } else {
+        all_models_lm[[formula_str]] <- summary(model)
+        aic_values[formula_str] <- AIC(model)
+        i <- i + 1
+      }
+    }, error = function(e) {
+      failed_models[[formula_str]] <- "Error"
+    })
+  )
 }
 
-# Sort models by AIC
+# Sort and extract top 5
 sorted_aic_values <- sort(aic_values)
-
-# Get the top 5 models
 top_5_models <- all_models_lm[names(sorted_aic_values[1:5])]
 top_5_aics <- sorted_aic_values[1:5]
 
-# Optional: Print top model formulas and their AICs
 top_5_aics
+
 ```
-
-
-Private
+Private 
 ```{r}
-set.seed(123)  # for reproducibility
+set.seed(123)
 
-# Exclude both response and 'logitpriv' from predictors
+# Exclude response and unwanted variables
 predictor_vars <- setdiff(names(merged_data), c("logitpub", "logitpriv", "geometry", "pri_neigh", "y", "y1"))
 
+# Storage
 all_models_lm <- list()
 aic_values <- numeric()
+failed_models <- list()
 
-# Generate 100 models with random combinations of 5 predictors
-for (i in 1:100) {
-  # Randomly select predictors
-  random_vars <- sample(predictor_vars, 5, replace = FALSE)
+i <- 0
+model_attempts <- 0
+
+while (i < 100 && model_attempts < 500) {
+  model_attempts <- model_attempts + 1
   
-  # Build formula
+  # Randomly select 1–5 predictors
+  num_vars <- sample(2:7, 1)
+  random_vars <- sample(predictor_vars, num_vars, replace = FALSE)
   formula_str <- paste("logitpriv ~", paste(random_vars, collapse = " + "))
   
-  # Fit the model
-  model <- lm(as.formula(formula_str), data = merged_data)
-  
-  # Store the model summary and AIC
-  all_models_lm[[formula_str]] <- summary(model)
-  aic_values[formula_str] <- AIC(model)
+  suppressWarnings(
+    tryCatch({
+      model <- lagsarlm(as.formula(formula_str), data = merged_data, listw = weights, Durbin = TRUE)
+      
+      # Skip numerical Hessian models
+      if (!is.null(model$ase) && model$ase == "Numerical Hessian used") {
+        failed_models[[formula_str]] <- "Numerical Hessian used"
+      } else {
+        all_models_lm[[formula_str]] <- summary(model)
+        aic_values[formula_str] <- AIC(model)
+        i <- i + 1
+      }
+    }, error = function(e) {
+      failed_models[[formula_str]] <- "Error"
+    })
+  )
 }
 
-# Sort models by AIC
+# Sort and extract top 5
 sorted_aic_values <- sort(aic_values)
-
-# Get the top 5 models
 top_5_models <- all_models_lm[names(sorted_aic_values[1:5])]
 top_5_aics <- sorted_aic_values[1:5]
 
-# Optional: Print top model formulas and their AICs
 top_5_aics
 ```
 
 
-PUB - change predictors here
+
+PUB - SDM
 
 ```{r}
-Pub_SAR_model <- lagsarlm(logitpub ~ fs_flood_risk_direction + nbhd + tract_white_perc + ward, data = merged_data, listw = weights)
+Pub_SAR_model <- lagsarlm(logitpub ~ Land.Square.Feet + Flood.Risk.Factor + Bedrooms + FEMA.Floodplain + Age + township + tract_white_perc, data = merged_data, listw = weights)
 summary(Pub_SAR_model)
 
-Pub_SEM_model <- errorsarlm(logitpub ~ fs_flood_risk_direction + nbhd + tract_white_perc + ward, data = merged_data, listw = weights)
+Pub_SEM_model <- errorsarlm(logitpub ~ Land.Square.Feet + Flood.Risk.Factor + Bedrooms + FEMA.Floodplain + Age + township + tract_white_perc, data = merged_data, listw = weights)
 summary(Pub_SEM_model)
 
-Pub_SDM_model <- lagsarlm(logitpub ~ fs_flood_risk_direction + nbhd + tract_white_perc + ward, data = merged_data, listw = weights, Durbin = TRUE)
+Pub_SDM_model <- lagsarlm(logitpub ~ Land.Square.Feet + Flood.Risk.Factor + Bedrooms + FEMA.Floodplain + Age + township + tract_white_perc, data = merged_data, listw = weights, Durbin = TRUE)
 summary(Pub_SDM_model)
 
 ```
 
 
-PRI -
+PRI - SDM
 
 ```{r}
-Priv_SAR_model <- lagsarlm(logitpriv ~ nbhd + tract_white_perc + fs_flood_risk_direction + Land.Square.Feet , data = merged_data, listw = weights)
+Priv_SAR_model <- lagsarlm(logitpriv ~ Land.Square.Feet + Flood.Risk.Factor + Bedrooms + FEMA.Floodplain + Age + township + tract_white_perc, data = merged_data, listw = weights)
 summary(Priv_SAR_model)
-Priv_SEM_model <- errorsarlm(logitpriv ~ nbhd + tract_white_perc + fs_flood_risk_direction + Land.Square.Feet , data = merged_data, listw = weights)
+Priv_SEM_model <- errorsarlm(logitpriv ~ Land.Square.Feet + Flood.Risk.Factor + Bedrooms + FEMA.Floodplain + Age + township + tract_white_perc, data = merged_data, listw = weights)
 summary(Priv_SEM_model)
-Priv_SDM_model <- lagsarlm(logitpriv ~ nbhd + tract_white_perc + fs_flood_risk_direction + Land.Square.Feet , data = merged_data, listw = weights, Durbin = TRUE)
+Priv_SDM_model <- lagsarlm(logitpriv ~ Land.Square.Feet + Flood.Risk.Factor + Bedrooms + FEMA.Floodplain + Age + township + tract_white_perc, data = merged_data, listw = weights, Durbin = TRUE)
 summary(Priv_SDM_model)
 ```
 
@@ -416,22 +539,20 @@ tm_shape(merged_sf) +
 ```
 
 ```{r}
-install.packages("spData")
-```
-
-
-```{r}
 # SDM Predictions Map
 library(spData)
 library(tmap)
 
 tmap_mode("view")
 
-tm_shape(merged_sf) +
-  tm_polygons("Pred_Probpubsdm") +
-  tm_borders() +  
-  tm_layout(legend.outside = TRUE) +  
+tm = tm_shape(merged_sf) +
+  tm_polygons("Pred_Probpubsdm", 
+              fill.scale = tm_scale_intervals(
+                values = "brewer.purples"),
+              fill.legend = tm_legend(title = "Predicted Probability")) +
+  tm_borders() +
   tm_title("Public SDM Model Predictions")  
+tmap_save(tm, filename = "Public_SR.html", selfcontained = TRUE)
 ```
 
 Private
@@ -471,24 +592,26 @@ tm_shape(merged_sf) +
 
 ```{r}
 # SDM Predictions Map
+library(spData)
+library(tmap)
+
 tmap_mode("view")
-tm_shape(merged_sf) +
-  tm_polygons(
-    "Pred_Probprivsdm",                  
-    palette = "brewer.PuRd"
-  ) +
-  tm_layout(
-    title = "Private SDM Model Predictions",    
-    legend.outside = TRUE               
-  ) +
-  tm_borders()
+
+tm = tm_shape(merged_sf) +
+  tm_polygons("Pred_Probprivsdm", 
+              fill.scale = tm_scale_intervals(
+                values = "brewer.purples"),
+              fill.legend = tm_legend(title = "Predicted Probability")) +
+  tm_borders() +  
+  tm_title("Private SDM Model Predictions")  
+tmap_save(tm, filename = "Private_SR.html", selfcontained = TRUE)
 ```
 ```{r}
 library(leaflet)
 library(sf)
 library(htmlwidgets)
 
-pal <- colorNumeric(palette = "PuBuGn", domain = merged_sf$Pred_Probprivsdm)
+pal <- colorNumeric(palette = "purples", domain = merged_sf$Pred_Probprivsdm)
 
 # Create Leaflet Map
 m <- leaflet(data = merged_sf) %>%
@@ -538,7 +661,7 @@ m <- leaflet(data = merged_sf) %>%
   )
 
 # Save the map as an HTML widget
-saveWidget(m, file = "public_sdm_predictions.html")
+#saveWidget(m, file = "public_sdm_predictions.html")
 ```
 
 ```{r}
@@ -546,65 +669,3 @@ browseURL("private_sar_predictions.html")
 ```
 
 
-```{r}
-library(sf)
-library(spdep)
-library(tidyverse)
-library(spatialreg)
-library(readxl)
-
-# Load neighborhood polygon data
-chicagosf <- read_csv("C:/Users/vreid/Downloads/Neighborhoods_2012b_20250222.csv")
-chicago_sf <- chicagosf %>%
-  mutate(geometry = st_as_sfc(the_geom)) %>%  # Convert to sf object
-  st_as_sf(crs = 4326)  # Assign CRS
-
-# Ensure valid geometries
-chicago_sf <- st_make_valid(chicago_sf)
-
-# Create neighborhood adjacency matrix
-nb <- poly2nb(chicago_sf, queen = TRUE)
-weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
-
-# Load spatial predictor data
-spatialpred <- read.csv("C:/Users/vreid/Downloads/Finaldatasetlast2.csv")
-spatialpred <- spatialpred %>% drop_na(longitude, latitude)
-
-# Convert point data to sf
-predictors_sf <- st_as_sf(spatialpred, coords = c("longitude", "latitude"), crs = 4326)
-
-# Merge spatial predictors with neighborhood polygons
-merged_data <- st_join(predictors_sf, chicago_sf, join = st_within)
-merged_data$Max <- as.numeric(merged_data$Max)
-
-# Select predictor columns
-predictor_cols <- c("Age", "Max", "Rooms", "tract_white_perc")
-
-# Aggregate point-based predictors within each neighborhood polygon
-merged_data <- merged_data %>%
-  group_by(PRI_NEIGH) %>%  # Group by neighborhood
-  summarise(
-    across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
-    geometry = first(geometry)  # Preserve spatial geometry
-  ) %>%
-  st_as_sf()  # Convert back to sf object
-
-# Ensure numeric variables are properly set
-merged_data$Max <- as.numeric(merged_data$Max)
-
-# OLS Model
-ols_model <- lm(Max ~ Age + tract_white_perc, data = merged_data, na.action = na.omit)
-summary(ols_model)
-
-# Check for spatial autocorrelation in OLS residuals
-nb <- poly2nb(merged_data, queen = TRUE)
-weights <- nb2listw(nb, style = "W", zero.policy = TRUE)
-moran.test(residuals(ols_model), weights)
-
-# Spatial Regression Models
-sar_model <- lagsarlm(Max ~ Age + tract_white_perc, data = merged_data, listw = weights)
-summary(sar_model)
-
-sem_model <- errorsarlm(Max ~ Age + tract_white_perc, data = merged_data, listw = weights)
-summary(sem_model)
-```
