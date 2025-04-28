@@ -11,6 +11,7 @@ This repository contains the front-end for the Reveal82 project, a civic data sc
 ## 📋 Table of Contents
 - [Overview](#overview)
 - [Team](#team)
+- [Repository Structure](#repository-structure)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Setup & Installation](#setup--installation)
