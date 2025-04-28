@@ -11,33 +11,24 @@ This repository contains the front-end for the Reveal82 project, a civic data sc
 ## 📋 Table of Contents
 - [Overview](#overview)
 - [Team](#team)
-- [Midterm Work](#midterm-work)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Setup & Installation](#setup--installation)
 - [Usage](#usage)
 - [Future Plans](#future-plans)
 - [Acknowledgements](#acknowledgements)
-- [License](#license)
+
 
 ## Overview
 Reveal82 is an interdisciplinary IPRO project combining statistical analysis, machine learning models, and an interactive front-end to predict and visualize lead service line risks across Chicago neighborhoods. Users can check their address risk score, explore spatial regression maps, and access recommendations for remediation.
 
 ## Team
-- **Eileen Garay** (Spatial Regression)  
-- **Lalith Kothuru** (Neural Networks, Front-end)  
+- **Eileen Garay** (Co-Leader / Statistical team)  
+- **Lalith Kothuru** (Neural Networks, Full-Stack dev)  
 - **Elijah Perez** (Data Merging, EDA, Random Forest)  
-- **Virginia Reider** (Logistic & Multinomial Regression, Data Exploration)  
-- **Austin Samuel** (Website Integration, UI/UX)  
-- **Rajan Savani** (XGBoost, Active Learning)
-
-## Midterm Work
-Our midterm deliverable documents all work completed through Week 7, including:  
-- **Statistics Team**: Data exploration, class variables, visualizations (90th percentile lead draws by ward), logistic & ordinal regression, spatial regression (SDM, SEM)  
-- **ML Team**: Data merging (SLI & Assessor), exploratory data analysis, Random Forest & XGBoost classifiers, neural network prototypes, uncertainty‐based active learning for address selection  
-- **Website**: Next.js front-end with address auto-complete (Google Maps API), risk score lookup, embedded Leaflet maps for spatial results, deployment on Vercel  
-
-See [IPRO_Midterm.pptx](./IPRO_Midterm.pptx) for full slides.
+- **Virginia Reider** (Co-Leader / Statistical Lead)  
+- **Austin Samuel** (Data Wrangler / ML)  
+- **Rajan Savani** (XGBoost, ML Lead)
 
 ## Features
 - **Check Your Risk**: Enter any Chicago address to view lead risk scores, model details, and remediation resources.  
@@ -46,7 +37,7 @@ See [IPRO_Midterm.pptx](./IPRO_Midterm.pptx) for full slides.
 - **Active Learning**: List of high‐uncertainty addresses for prioritized testing and feedback loop.
 
 ## Tech Stack
-- **Front-end**: Next.js, React, Tailwind CSS, Leaflet (via iframe)  
+- **Front-end**: Next.js, Tailwind CSS  
 - **APIs**: Google Maps Places API for address lookup  
 - **Models & Data**: Jupyter notebooks (Rmd, .ipynb) for regression and ML workflows, Pandas, scikit-learn, XGBoost, TensorFlow/Keras  
 - **Deployment**: Vercel for front-end, GitHub for version control
