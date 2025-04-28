@@ -1,4 +1,4 @@
-# Reveal82 Website
+# Reveal82
 
 This repository contains the front-end for the Reveal82 project, a civic data science initiative to help Chicago residents understand and mitigate lead exposure risks in their water service lines.
 
@@ -29,6 +29,22 @@ Reveal82 is an interdisciplinary IPRO project combining statistical analysis, ma
 - **Virginia Reider** (Co-Leader / Statistical Lead)  
 - **Austin Samuel** (Data Wrangler / ML)  
 - **Rajan Savani** (XGBoost, ML Lead)
+
+## Repository Structure
+
+```text
+├── Lead-documents/
+│   Contains all of the lead documents used in our analyses.
+├── ML/
+│   Contains the ML team’s data-merging scripts, notebooks, and trained models.
+├── Stats/
+│   Contains the Statistics team’s RMarkdown files, spatial-regression scripts, and visualizations.
+├── website/
+│   Contains the Next.js front-end source code for the Reveal82 website.
+└── README.md
+    This document.
+```
+
 
 ## Features
 - **Check Your Risk**: Enter any Chicago address to view lead risk scores, model details, and remediation resources.  
