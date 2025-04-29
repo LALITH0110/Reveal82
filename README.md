@@ -5,8 +5,6 @@ This repository contains the front-end for the Reveal82 project, a civic data sc
 ## 🚀 Live Demo
 [Explore the Reveal82 web app](https://reveal82website-sepia.vercel.app)
 
-## 📂 Repository
-[GitHub » LALITH0110/reveal82website](https://github.com/LALITH0110/reveal82website)
 
 ## 📋 Table of Contents
 - [Overview](#overview)
