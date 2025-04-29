@@ -33,6 +33,12 @@ Reveal82 is an interdisciplinary IPRO project combining statistical analysis, ma
 
 ## Repository Structure
 
+- **Lead-documents:** Contains all of the lead documents used in our analyses.
+- **ML:** Contains the ML team’s data-merging scripts, notebooks, and trained models.
+- **Stats:** Contains the Statistics team’s RMarkdown files, spatial-regression scripts, and visualizations.
+- **website:** Contains the Next.js front-end source code for the Reveal82 website.
+- **README.md:** This document.
+
 ```text
 ├── Lead-documents/
 │   Contains all of the lead documents used in our analyses.
